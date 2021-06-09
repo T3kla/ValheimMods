@@ -97,25 +97,25 @@ namespace SpeedyPaths
             _showHudStatus = config("Hud", "ShowStatusIcon", true, "Show the speedypaths status icon in the hud", false);
             _hudStatusText = config("Hud", "StatusText", "Speedy Path", "Text shown above the status icon", false);
             _hudPosIconThresholds.Add(config("Hud", "BuffIcon +1", 1.0f, "Speed buff threshold to show lvl 1 buff icon"));
-            _hudPosIconThresholds.Add(Config.Bind("Hud", "BuffIcon +2", 1.39f, "Speed buff threshold to show lvl 2 buff icon"));
-            _hudNegIconThresholds.Add(Config.Bind("Hud", "DebuffIcon -1", 1.0f, "Speed buff threshold to show lvl 1 debuff icon"));
-            _hudNegIconThresholds.Add(Config.Bind("Hud", "DebuffIcon -2", 0.79f, "Speed buff threshold to show lvl 2 debuff icon"));
+            _hudPosIconThresholds.Add(config("Hud", "BuffIcon +2", 1.39f, "Speed buff threshold to show lvl 2 buff icon"));
+            _hudNegIconThresholds.Add(config("Hud", "DebuffIcon -1", 1.0f, "Speed buff threshold to show lvl 1 debuff icon"));
+            _hudNegIconThresholds.Add(config("Hud", "DebuffIcon -2", 0.79f, "Speed buff threshold to show lvl 2 debuff icon"));
 
-            _speedModifiers[GroundType.PathDirt] = Config.Bind("SpeedModifiers", "DirtPathSpeed", 1.15f, "Modifier for speed while on dirt paths");
-            _speedModifiers[GroundType.PathStone] = Config.Bind("SpeedModifiers", "StonePathSpeed", 1.4f, "Modifier for speed while on stone paths");
-            _speedModifiers[GroundType.Cultivated] = Config.Bind("SpeedModifiers", "CultivatedSpeed", 1.0f, "Modifier for speed while on Cultivated land");
-            _speedModifiers[GroundType.StructureWood] = Config.Bind("SpeedModifiers", "StructureWoodSpeed", 1.15f, "Modifier for speed while on wood structures");
-            _speedModifiers[GroundType.StructureHardWood] = Config.Bind("SpeedModifiers", "StructureHardWoodSpeed", 1.15f, "Modifier for speed while on core wood structures");
-            _speedModifiers[GroundType.StructureStone] = Config.Bind("SpeedModifiers", "StructureStoneSpeed", 1.4f, "Modifier for speed while on stone structures");
-            _speedModifiers[GroundType.StructureIron] = Config.Bind("SpeedModifiers", "StructureIronSpeed", 1.4f, "Modifier for speed while on ironwood structures");
+            _speedModifiers[GroundType.PathDirt] = config("SpeedModifiers", "DirtPathSpeed", 1.15f, "Modifier for speed while on dirt paths");
+            _speedModifiers[GroundType.PathStone] = config("SpeedModifiers", "StonePathSpeed", 1.4f, "Modifier for speed while on stone paths");
+            _speedModifiers[GroundType.Cultivated] = config("SpeedModifiers", "CultivatedSpeed", 1.0f, "Modifier for speed while on Cultivated land");
+            _speedModifiers[GroundType.StructureWood] = config("SpeedModifiers", "StructureWoodSpeed", 1.15f, "Modifier for speed while on wood structures");
+            _speedModifiers[GroundType.StructureHardWood] = config("SpeedModifiers", "StructureHardWoodSpeed", 1.15f, "Modifier for speed while on core wood structures");
+            _speedModifiers[GroundType.StructureStone] = config("SpeedModifiers", "StructureStoneSpeed", 1.4f, "Modifier for speed while on stone structures");
+            _speedModifiers[GroundType.StructureIron] = config("SpeedModifiers", "StructureIronSpeed", 1.4f, "Modifier for speed while on ironwood structures");
 
-            _staminaModifiers[GroundType.PathDirt] = Config.Bind("StaminaModifiers", "DirtPathStamina", 0.8f, "Modifier for stamina while on dirt paths");
-            _staminaModifiers[GroundType.PathStone] = Config.Bind("StaminaModifiers", "StonePathStamina", 0.7f, "Modifier for stamina while on stone paths");
-            _staminaModifiers[GroundType.Cultivated] = Config.Bind("StaminaModifiers", "CultivatedStamina", 1.0f, "Modifier for stamina while on Cultivated land");
-            _staminaModifiers[GroundType.StructureWood] = Config.Bind("StaminaModifiers", "StructureWoodStamina", 0.8f, "Modifier for stamina while on wood structures");
-            _staminaModifiers[GroundType.StructureHardWood] = Config.Bind("StaminaModifiers", "StructureHardWoodStamina", 0.8f, "Modifier for stamina while on core wood structures");
-            _staminaModifiers[GroundType.StructureStone] = Config.Bind("StaminaModifiers", "StructureStoneStamina", 0.7f, "Modifier for stamina while on stone structures");
-            _staminaModifiers[GroundType.StructureIron] = Config.Bind("StaminaModifiers", "StructureIronStamina", 0.7f, "Modifier for stamina while on ironwood structures");
+            _staminaModifiers[GroundType.PathDirt] = config("StaminaModifiers", "DirtPathStamina", 0.8f, "Modifier for stamina while on dirt paths");
+            _staminaModifiers[GroundType.PathStone] = config("StaminaModifiers", "StonePathStamina", 0.7f, "Modifier for stamina while on stone paths");
+            _staminaModifiers[GroundType.Cultivated] = config("StaminaModifiers", "CultivatedStamina", 1.0f, "Modifier for stamina while on Cultivated land");
+            _staminaModifiers[GroundType.StructureWood] = config("StaminaModifiers", "StructureWoodStamina", 0.8f, "Modifier for stamina while on wood structures");
+            _staminaModifiers[GroundType.StructureHardWood] = config("StaminaModifiers", "StructureHardWoodStamina", 0.8f, "Modifier for stamina while on core wood structures");
+            _staminaModifiers[GroundType.StructureStone] = config("StaminaModifiers", "StructureStoneStamina", 0.7f, "Modifier for stamina while on stone structures");
+            _staminaModifiers[GroundType.StructureIron] = config("StaminaModifiers", "StructureIronStamina", 0.7f, "Modifier for stamina while on ironwood structures");
 
             //Should handle new biomes automagically
             foreach (Heightmap.Biome biome in Enum.GetValues(typeof(Heightmap.Biome)))
