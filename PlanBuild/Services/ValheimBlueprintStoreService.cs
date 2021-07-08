@@ -1,4 +1,6 @@
-﻿using UnityEngine.Networking;
+﻿using System;
+using PlanBuild.Blueprints;
+using UnityEngine.Networking;
 
 namespace PlanBuild.Services
 {
@@ -23,9 +25,9 @@ namespace PlanBuild.Services
             });
         }
 
-        public static void UploadBlueprint(Blueprints.Blueprint blueprint)
+        public static void UploadBlueprint(Blueprint blueprint)
         {
-            var uwr = UnityWebRequest.Post("uri", blueprint.ToString());
+            var uwr = UnityWebRequest.Post("uri", Convert.ToBase64String(blueprint.ToBlob()));
             HttpService.SendRequest(uwr, value =>
             {
                 Jotunn.Logger.LogInfo(value.downloadHandler.text);
@@ -33,9 +35,9 @@ namespace PlanBuild.Services
         }
 
 
-        public static void UpdateBlueprint(Blueprints.Blueprint blueprint)
+        public static void UpdateBlueprint(Blueprint blueprint)
         {
-            var uwr = UnityWebRequest.Put("uri", blueprint.ToString());
+            var uwr = UnityWebRequest.Put("uri", Convert.ToBase64String(blueprint.ToBlob()));
             HttpService.SendRequest(uwr, value =>
             {
                 Jotunn.Logger.LogInfo(value.downloadHandler.text);
