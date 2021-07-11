@@ -244,10 +244,7 @@ namespace PlanBuild.PlanBuild
             }
             Player.m_localPlayer.UnequipItem(blueprintRune);
             Player.m_localPlayer.EquipItem(blueprintRune);
-
-            Color color = blueprintRune.m_shared.m_buildPieces == planPieceTable ? Color.red : Color.cyan;
-            ShaderHelper.SetEmissionColor(Player.m_localPlayer.m_visEquipment.m_rightItemInstance, color);
-
+             
             Player.m_localPlayer.UpdateKnownRecipesList();
         }
     }

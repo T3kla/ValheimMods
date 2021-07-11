@@ -104,6 +104,11 @@ namespace PlanBuild.Blueprints
         private KeyHintConfig KeyHint;
 
         /// <summary>
+        ///     Bounds of this blueprint
+        /// </summary>
+        private Bounds Bounds;
+
+        /// <summary>
         ///     Create a blueprint instance from a file in the filesystem. Reads VBuild and Blueprint files. 
         ///     Reads an optional thumbnail from a PNG file with the same name as the blueprint.
         /// </summary>
@@ -415,13 +420,16 @@ namespace PlanBuild.Blueprints
         /// </summary>
         /// <returns></returns>
         public Bounds GetBounds()
-        {
-            Bounds bounds = new Bounds();
-            foreach(PieceEntry entry in PieceEntries)
+        { 
+            if(Bounds.size == Vector3.zero)
             {
-                bounds.Encapsulate(entry.GetPosition());
+                Bounds = new Bounds();
+                foreach (PieceEntry entry in PieceEntries)
+                {
+                    Bounds.Encapsulate(entry.GetPosition());
+                }
             }
-            return bounds;
+            return Bounds;
         }
 
         /// <summary>
@@ -430,8 +438,9 @@ namespace PlanBuild.Blueprints
         /// <param name="position">Center position of the capture</param>
         /// <param name="radius">Capture radius</param>
         /// <returns></returns>
-        public bool Capture(Vector3 position, float radius)
+        public bool Capture(string bpname, Transform captureTransform, float radius)
         {
+            Vector3 position = captureTransform.position;
             Logger.LogDebug("Collecting piece information");
 
             var numPieces = 0;
@@ -472,7 +481,7 @@ namespace PlanBuild.Blueprints
                 numPieces++;
             }
 
-            if (collected.Count() == 0)
+            if (collected.Count == 0)
             {
                 return false;
             }
@@ -541,18 +550,40 @@ namespace PlanBuild.Blueprints
             // Create instance snap points
             if (SnapPoints == null)
             {
-                SnapPoints = new SnapPoint[snapPoints.Count()];
+                SnapPoints = new SnapPoint[snapPoints.Count];
             }
             else if (SnapPoints.Length > 0)
             {
                 Array.Clear(SnapPoints, 0, SnapPoints.Length - 1);
-                Array.Resize(ref SnapPoints, snapPoints.Count());
+                Array.Resize(ref SnapPoints, snapPoints.Count);
             }
 
-            for (int j = 0; j < snapPoints.Count(); j++)
+            for (int j = 0; j < snapPoints.Count; j++)
             {
                 SnapPoints[j] = new SnapPoint(snapPoints[j] - center);
             }
+
+            Vector3 fxPosition = center;
+            fxPosition.y = pieces.First().transform.position.y;
+
+            Bounds bounds = GetBounds();
+
+            Vector3 circlePosition = bounds.center;
+            circlePosition.y = bounds.min.y;
+            
+#if DEBUG
+            Jotunn.Logger.LogDebug($"Circle spawn position @ {circlePosition}");
+#endif
+              
+            Vector3 targetPosition = bounds.center;
+            targetPosition.y = bounds.max.y + 1f;
+
+#if DEBUG
+            Jotunn.Logger.LogDebug($"Circle target position @ {targetPosition}");
+#endif
+
+            TextInput.instance.m_queuedSign = new Blueprint.BlueprintSaveGUI(this, fxPosition, circlePosition, targetPosition, radius, pieces);
+            TextInput.instance.Show($"Save Blueprint ({GetPieceCount()} pieces captured)", bpname, 50);
 
             return true;
         }
@@ -874,10 +905,20 @@ namespace PlanBuild.Blueprints
         internal class BlueprintSaveGUI : TextReceiver
         {
             private Blueprint newbp;
+            private readonly Vector3 fxPosition;
+            private readonly IOrderedEnumerable<Piece> pieces;
+            private readonly Vector3 circlePosition;
+            private readonly Vector3 targetPosition;
+            private readonly float magnitude;
 
-            public BlueprintSaveGUI(Blueprint bp)
+            public BlueprintSaveGUI(Blueprint bp, Vector3 fxPosition, Vector3 circlePosition, Vector3 targetPosition, float magnitude, IOrderedEnumerable<Piece> pieces)
             {
                 newbp = bp;
+                this.fxPosition = fxPosition;
+                this.circlePosition = circlePosition;
+                this.targetPosition = targetPosition;
+                this.magnitude = magnitude;
+                this.pieces = pieces;
             }
 
             public string GetText()
@@ -904,6 +945,21 @@ namespace PlanBuild.Blueprints
                         oldbp.DestroyBlueprint();
                         BlueprintManager.LocalBlueprints.Remove(newbp.ID);
                     }
+                    
+                    //Fancy FX
+                    GameObject circleObject = Object.Instantiate(PrefabManager.Instance.GetPrefab(BlueprintRunePrefab.BlueprintCaptureFXCircle), fxPosition, Quaternion.identity);
+
+                    Transform placerTransform = circleObject.transform;
+                    for (int j = 0; j < placerTransform.childCount; j++)
+                    {
+                        Transform effectTransform = placerTransform.GetChild(j);
+                        effectTransform.localPosition = circlePosition;
+                        effectTransform.localScale = Vector3.one * magnitude;
+                    }
+                    
+                    BlueprintCapture blueprintCaptureFX = circleObject.AddComponent<BlueprintCapture>();
+                    blueprintCaptureFX.m_pieces = pieces;
+                    blueprintCaptureFX.relativeTargetPosition = targetPosition;
 
                     PlanBuildPlugin.Instance.StartCoroutine(AddBlueprint());
                 }

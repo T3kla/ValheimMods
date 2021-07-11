@@ -53,7 +53,7 @@ namespace PlanBuild
             planTotemPrefab = new PlanTotemPrefab(planbuildBundle);
             planbuildBundle.Unload(false);
             PlanManager.Instance.Init();
-
+             
             // Init Blueprints
             AssetBundle blueprintsBundle = AssetUtils.LoadAssetBundleFromResources("blueprints", assembly);
             blueprintRunePrefab = new BlueprintRunePrefab(blueprintsBundle);

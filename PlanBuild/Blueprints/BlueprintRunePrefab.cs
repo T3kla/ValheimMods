@@ -11,7 +11,6 @@ namespace PlanBuild.Blueprints
         public const string PieceTableName = "_BlueprintPieceTable";
         public const string CategoryTools = "Tools";
         public const string CategoryBlueprints = "Blueprints";
-
         public const string BlueprintRuneName = "BlueprintRune";
 
         public const string BlueprintSnapPointName = "piece_blueprint_snappoint";
@@ -20,8 +19,10 @@ namespace PlanBuild.Blueprints
         public const string BlueprintRuneStack = "piece_world_blueprint_rune_stack";
         public const string MakeBlueprintName = "make_blueprint";
         public const string DeletePlansName = "delete_plans";
-
+        public const string BlueprintCaptureFXCircle = "vfx_blueprint_rune_circle";
+        public const string BlueprintCaptureFXPoof = "vfx_blueprint_floating_runes";
         public static string BlueprintRuneItemName;
+        public static GameObject runePoofPrefab;
 
         public BlueprintRunePrefab(AssetBundle assetBundle)
         {
@@ -93,6 +94,13 @@ namespace PlanBuild.Blueprints
             // Blueprint stub
             GameObject placebp_prefab = assetBundle.LoadAsset<GameObject>(Blueprint.PieceBlueprintName);
             PrefabManager.Instance.AddPrefab(placebp_prefab);
+
+            // FX
+            GameObject blueprintCaptureRuneCircle = assetBundle.LoadAsset<GameObject>(BlueprintCaptureFXCircle);
+            PrefabManager.Instance.AddPrefab(blueprintCaptureRuneCircle);
+
+            runePoofPrefab = assetBundle.LoadAsset<GameObject>(BlueprintCaptureFXPoof); 
+
         }
     }
 }

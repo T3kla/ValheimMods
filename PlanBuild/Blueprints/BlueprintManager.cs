@@ -776,14 +776,8 @@ namespace PlanBuild.Blueprints
             var bpname = $"blueprint{LocalBlueprints.Count() + 1:000}";
             Jotunn.Logger.LogInfo($"Capturing blueprint {bpname}");
 
-            var bp = new Blueprint();
-            Vector3 capturePosition = self.m_placementMarkerInstance.transform.position;
-            if (bp.Capture(capturePosition, Instance.SelectionRadius))
-            {
-                TextInput.instance.m_queuedSign = new Blueprint.BlueprintSaveGUI(bp);
-                TextInput.instance.Show($"Save Blueprint ({bp.GetPieceCount()} pieces captured)", bpname, 50);
-            }
-            else
+            var bp = new Blueprint(); 
+            if (!bp.Capture(bpname, self.m_placementMarkerInstance.transform, Instance.SelectionRadius))
             {
                 Jotunn.Logger.LogWarning($"Could not capture blueprint {bpname}");
             }
@@ -799,7 +793,7 @@ namespace PlanBuild.Blueprints
             var transform = player.m_placementGhost.transform;
             var position = transform.position;
             var rotation = transform.rotation;
-
+             
             bool placeDirect = Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl);
             if (placeDirect && !BlueprintConfig.allowDirectBuildConfig.Value)
             {
@@ -808,110 +802,59 @@ namespace PlanBuild.Blueprints
             }
 
             bool flatten = Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift);
+            Bounds bounds = bp.GetBounds();
             if (flatten)
             {
-                Bounds bounds = bp.GetBounds();
                 FlattenTerrain.FlattenForBlueprint(transform, bounds, bp.PieceEntries);
             }
 
-            uint cntEffects = 0u;
-            uint maxEffects = 10u;
+            Vector3 circlePosition = bounds.center;
+            circlePosition.y = bounds.min.y;  
+#if DEBUG
+            Jotunn.Logger.LogDebug($"Circle spawn position @ {circlePosition}");
+#endif
 
-            GameObject blueprintPrefab = PrefabManager.Instance.GetPrefab(Blueprint.PieceBlueprintName);
-            GameObject blueprintObject = Object.Instantiate(blueprintPrefab, position, rotation);
-            ZDO blueprintZDO = blueprintObject.GetComponent<ZNetView>().GetZDO();
-            blueprintZDO.Set(Blueprint.ZDOBlueprintName, bp.Name);
-            ZDOIDSet createdPlans = new ZDOIDSet();
+            float magnitude = new Vector2(bounds.extents.x, bounds.extents.z).magnitude + 1f;
+#if DEBUG
+            Jotunn.Logger.LogDebug($"Magnitude of rune circle: {magnitude}");
+#endif
+ 
+            Vector3 targetPosition = bounds.center;
+            targetPosition.y = bounds.max.y + 0.3f;
 
-            for (int i = 0; i < bp.PieceEntries.Length; i++)
+#if DEBUG
+            Jotunn.Logger.LogDebug($"Circle target position @ {targetPosition}");
+#endif
+
+            GameObject circlePrefab = PrefabManager.Instance.GetPrefab(BlueprintRunePrefab.BlueprintCaptureFXCircle);
+            GameObject circleObject = Object.Instantiate(circlePrefab, position, rotation);
+
+            Transform placerTransform = circleObject.transform;
+            for (int i = 0; i < placerTransform.childCount; i++)
             {
-                PieceEntry entry = bp.PieceEntries[i];
-                // Final position
-                Vector3 entryPosition = transform.TransformPoint(entry.GetPosition());
-
-                // Final rotation
-                Quaternion entryQuat = transform.rotation * entry.GetRotation();
-                // Get the prefab of the piece or the plan piece
-                string prefabName = entry.name;
-                if (!placeDirect)
-                {
-                    prefabName += PlanPiecePrefab.PlannedSuffix;
-                }
-
-                GameObject prefab = PrefabManager.Instance.GetPrefab(prefabName);
-                if (!prefab)
-                {
-                    Jotunn.Logger.LogWarning(entry.name + " not found, you are probably missing a dependency for blueprint " + bp.Name + ", not placing @ " + entryPosition);
-                    continue;
-                }
-
-                // Instantiate a new object with the new prefab
-                GameObject gameObject = Object.Instantiate(prefab, entryPosition, entryQuat);
-
-                ZNetView zNetView = gameObject.GetComponent<ZNetView>();
-                if (!zNetView)
-                {
-                    Jotunn.Logger.LogWarning("No ZNetView for " + gameObject + "!!??");
-                }
-                else if (gameObject.TryGetComponent(out PlanPiece planPiece))
-                {
-                    planPiece.PartOfBlueprint(blueprintZDO.m_uid, entry);
-                    createdPlans.Add(planPiece.GetPlanPieceID());
-                }
-
-                // Register special effects
-                CraftingStation craftingStation = gameObject.GetComponentInChildren<CraftingStation>();
-                if (craftingStation)
-                {
-                    player.AddKnownStation(craftingStation);
-                }
-                Piece newpiece = gameObject.GetComponent<Piece>();
-                if (newpiece)
-                {
-                    newpiece.SetCreator(player.GetPlayerID());
-                }
-                PrivateArea privateArea = gameObject.GetComponent<PrivateArea>();
-                if (privateArea)
-                {
-                    privateArea.Setup(Game.instance.GetPlayerProfile().GetName());
-                }
-                WearNTear wearntear = gameObject.GetComponent<WearNTear>();
-                if (wearntear)
-                {
-                    wearntear.OnPlaced();
-                }
-                TextReceiver textReceiver = gameObject.GetComponent<TextReceiver>();
-                if (textReceiver != null)
-                {
-                    textReceiver.SetText(entry.additionalInfo);
-                }
-
-                // Limited build effects
-                if (cntEffects < maxEffects)
-                {
-                    newpiece.m_placeEffect.Create(gameObject.transform.position, rotation, gameObject.transform, 1f);
-                    player.AddNoise(50f);
-                    cntEffects++;
-                }
-
-                // Count up player builds
-                Game.instance.GetPlayerProfile().m_playerStats.m_builds++;
+                Transform effectTransform = placerTransform.GetChild(i);
+                effectTransform.localPosition = circlePosition;
+                effectTransform.localScale = Vector3.one * magnitude;
             }
-
-            blueprintZDO.Set(PlanPiece.zdoBlueprintPiece, createdPlans.ToZPackage().GetArray());
-
+            
+            BlueprintPlacement blueprintPlacement = circleObject.AddComponent<BlueprintPlacement>();
+            //ParticleSystem particleSystem = blueprintPlacement.runeCircleTransform.GetComponent<ParticleSystem>(); 
+            //ParticleSystem.VelocityOverLifetimeModule velocityOverLifetime = particleSystem.velocityOverLifetime;
+            //velocityOverLifetime.speedModifierMultiplier = magnitude;
+            blueprintPlacement.placeDirect = placeDirect;
+            blueprintPlacement.blueprint = bp;
+            blueprintPlacement.creatorID = player.GetPlayerID();
+            blueprintPlacement.relativeTargetPosition = targetPosition;
+             
             // Dont set the blueprint piece and clutter the world with it
             return false;
         }
 
         private bool UndoPiece()
         {
-            if (LastHoveredPiece)
+            if (LastHoveredPiece && LastHoveredPiece.TryGetComponent(out PlanPiece planPiece))
             {
-                if (LastHoveredPiece.TryGetComponent(out PlanPiece planPiece))
-                {
-                    planPiece.m_wearNTear.Remove();
-                }
+                planPiece.m_wearNTear.Remove();
             }
 
             return false;
@@ -919,28 +862,25 @@ namespace PlanBuild.Blueprints
 
         private bool UndoBlueprint()
         {
-            if (LastHoveredPiece)
+            if (LastHoveredPiece && LastHoveredPiece.TryGetComponent(out PlanPiece planPiece))
             {
-                if (LastHoveredPiece.TryGetComponent(out PlanPiece planPiece))
+                ZDOID blueprintID = planPiece.GetBlueprintID();
+                if (blueprintID != ZDOID.None)
                 {
-                    ZDOID blueprintID = planPiece.GetBlueprintID();
-                    if (blueprintID != ZDOID.None)
+                    int removedPieces = 0;
+                    foreach (PlanPiece pieceToRemove in GetPlanPiecesInBlueprint(blueprintID))
                     {
-                        int removedPieces = 0;
-                        foreach (PlanPiece pieceToRemove in GetPlanPiecesInBlueprint(blueprintID))
-                        {
-                            pieceToRemove.Remove();
-                            removedPieces++;
-                        }
-
-                        GameObject blueprintObject = ZNetScene.instance.FindInstance(blueprintID);
-                        if (blueprintObject)
-                        {
-                            ZNetScene.instance.Destroy(blueprintObject);
-                        }
-
-                        Player.m_localPlayer.Message(MessageHud.MessageType.Center, Localization.instance.Localize("$msg_removed_plans", removedPieces.ToString()));
+                        pieceToRemove.Remove();
+                        removedPieces++;
                     }
+
+                    GameObject blueprintObject = ZNetScene.instance.FindInstance(blueprintID);
+                    if (blueprintObject)
+                    {
+                        ZNetScene.instance.Destroy(blueprintObject);
+                    }
+
+                    Player.m_localPlayer.Message(MessageHud.MessageType.Center, Localization.instance.Localize("$msg_removed_plans", removedPieces.ToString()));
                 }
             }
 

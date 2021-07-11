@@ -1,4 +1,5 @@
 ﻿using Jotunn.Entities;
+using PlanBuild.Blueprints;
 using System;
 using System.Collections.Generic;
 using UnityEngine;
@@ -22,7 +23,7 @@ namespace PlanBuild.Plans
             Piece.m_description = Localization.instance.Localize("$item_plan_piece_description", originalPiece.m_name);
             Piece.m_resources = new Piece.Requirement[0];
             Piece.m_craftingStation = null;
-            Piece.m_placeEffect.m_effectPrefabs = new EffectList.EffectData[0];
+            Piece.m_placeEffect.m_effectPrefabs = new EffectList.EffectData[] { new EffectList.EffectData { m_enabled = true, m_prefab = BlueprintRunePrefab.runePoofPrefab } };
             Piece.m_comfort = 0;
             Piece.m_canBeRemoved = true;
 
