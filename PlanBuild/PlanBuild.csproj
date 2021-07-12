@@ -119,7 +119,9 @@
     <Compile Include="Properties\IgnoreAccessModifiers.cs" />
     <Compile Include="PlanBuildPlugin.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Services\Constants.cs" />
     <Compile Include="Services\HttpService.cs" />
+    <Compile Include="Services\Models\BlueprintUpload.cs" />
     <Compile Include="Services\ValheimBlueprintStoreService.cs" />
     <Compile Include="ShaderHelper.cs" />
   </ItemGroup>

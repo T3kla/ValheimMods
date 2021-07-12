@@ -1,35 +1,47 @@
-﻿using System;
-using PlanBuild.Blueprints;
+﻿using PlanBuild.Blueprints;
+using PlanBuild.Services.Models;
 using UnityEngine.Networking;
 
 namespace PlanBuild.Services
 {
     class ValheimBlueprintStoreService
     {
-
-        public static void DeleteBlueprint()
+        public static void GetBlueprints()
         {
-            var uwr = UnityWebRequest.Delete("uri");
+            var uwr = UnityWebRequest.Get($"{Constants.ValheimBlueprintStoreEndpoint}");
             HttpService.SendRequest(uwr, value =>
             {
+                //callback
                 Jotunn.Logger.LogInfo(value.downloadHandler.text);
             });
         }
 
-        public static void DownloadBlueprint()
+        public static void DeleteBlueprint(string id)
         {
-            var uwr = UnityWebRequest.Get("uri");
+            var uwr = UnityWebRequest.Delete($"{Constants.ValheimBlueprintStoreEndpoint}/${id}");
             HttpService.SendRequest(uwr, value =>
             {
+                //callback
+                Jotunn.Logger.LogInfo(value.downloadHandler.text);
+            });
+        }
+
+        public static void DownloadBlueprint(string id)
+        {
+            var uwr = UnityWebRequest.Get($"{Constants.ValheimBlueprintStoreEndpoint}/${id}");
+            HttpService.SendRequest(uwr, value =>
+            {
+                //callback
                 Jotunn.Logger.LogInfo(value.downloadHandler.text);
             });
         }
 
         public static void UploadBlueprint(Blueprint blueprint)
         {
-            var uwr = UnityWebRequest.Post("uri", Convert.ToBase64String(blueprint.ToBlob()));
+            var uwr = UnityWebRequest.Post($"{Constants.ValheimBlueprintStoreEndpoint}/${blueprint.ID}", SimpleJson.SimpleJson.SerializeObject(BlueprintUpload.Convert(blueprint)));
             HttpService.SendRequest(uwr, value =>
             {
+                //callback
                 Jotunn.Logger.LogInfo(value.downloadHandler.text);
             });
         }
@@ -37,9 +49,10 @@ namespace PlanBuild.Services
 
         public static void UpdateBlueprint(Blueprint blueprint)
         {
-            var uwr = UnityWebRequest.Put("uri", Convert.ToBase64String(blueprint.ToBlob()));
+            var uwr = UnityWebRequest.Put($"{Constants.ValheimBlueprintStoreEndpoint}/${blueprint.ID}", SimpleJson.SimpleJson.SerializeObject(BlueprintUpload.Convert(blueprint)));
             HttpService.SendRequest(uwr, value =>
             {
+                //callback
                 Jotunn.Logger.LogInfo(value.downloadHandler.text);
             });
         }
