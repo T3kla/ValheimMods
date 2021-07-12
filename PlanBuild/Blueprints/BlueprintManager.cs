@@ -1,6 +1,7 @@
 ﻿using Jotunn.Configs;
 using Jotunn.Managers;
 using PlanBuild.ModCompat;
+using PlanBuild.PlanBuild;
 using PlanBuild.Plans;
 using System;
 using System.Collections.Generic;
@@ -76,14 +77,14 @@ namespace PlanBuild.Blueprints
                 On.Player.OnSpawned += OnOnSpawned;
                 On.Player.PieceRayTest += OnPieceRayTest;
                 On.Player.UpdateWearNTearHover += OnUpdateWearNTearHover;
+                On.Player.SetupPlacementGhost += OnSetupPlacementGhost;
                 On.Player.UpdatePlacement += OnUpdatePlacement;
                 On.Player.UpdatePlacementGhost += OnUpdatePlacementGhost;
                 On.Player.PlacePiece += OnPlacePiece;
                 On.GameCamera.UpdateCamera += OnUpdateCamera;
                 On.Humanoid.EquipItem += OnEquipItem;
                 On.Humanoid.UnequipItem += OnUnequipItem;
-                On.ZNet.OnDestroy += ResetServerBlueprints;
-
+                On.ZNet.OnDestroy += ResetServerBlueprints; 
             }
             catch (Exception ex)
             {
@@ -103,7 +104,7 @@ namespace PlanBuild.Blueprints
             {
                 return true;
             }
-            return piece.GetComponent<PlanPiece>() != null || (!onlyPlanned && PlanBuildPlugin.CanCreatePlan(piece));
+            return piece.GetComponent<PlanPiece>() != null || (!onlyPlanned && PlanManager.CanCreatePlan(piece));
         }
 
         /// <summary>
@@ -361,19 +362,19 @@ namespace PlanBuild.Blueprints
             // Client only
             if (ZNet.instance != null && !ZNet.instance.IsDedicated())
             {
-                Jotunn.Logger.LogMessage("Registering known blueprints");
+                Jotunn.Logger.LogInfo("Registering known blueprints");
 
                 // Create prefabs for all known blueprints
                 foreach (var bp in LocalBlueprints.Values)
                 {
-                    bp.CreatePrefab();
+                    bp.CreatePiece();
                 }
             }
         }
 
         private void OnOnSpawned(On.Player.orig_OnSpawned orig, Player self)
         {
-            //CircleProjector projector = self.m_placeMarker.AddComponent<CircleProjector>();
+            orig(self);
             GameObject workbench = PrefabManager.Instance.GetPrefab("piece_workbench");
             SelectionSegment = Object.Instantiate(workbench.GetComponentInChildren<CircleProjector>().m_prefab);
             SelectionSegment.SetActive(false);
@@ -390,18 +391,50 @@ namespace PlanBuild.Blueprints
             return result;
         }
 
+        /// <summary>
+        ///     Dont highlight pieces when make/delete tool is active
+        /// </summary>
+        /// <param name="orig"></param>
+        /// <param name="self"></param>
         private void OnUpdateWearNTearHover(On.Player.orig_UpdateWearNTearHover orig, Player self)
         {
-            Piece piece = Player.m_localPlayer.GetSelectedPiece();
-            if (piece != null)
+            Piece piece = self.GetSelectedPiece();
+            if (piece &&
+                (piece.name.StartsWith(BlueprintRunePrefab.MakeBlueprintName)
+              || piece.name.StartsWith(BlueprintRunePrefab.DeletePlansName)))
             {
-                if (piece.name.StartsWith(BlueprintRunePrefab.MakeBlueprintName)
-                    || piece.name.StartsWith(BlueprintRunePrefab.DeletePlansName))
-                {
-                    return;
-                }
+                return;
             }
 
+            orig(self);
+        }
+
+        /// <summary>
+        ///     Lazy instantiate blueprint ghost
+        /// </summary>
+        /// <param name="orig"></param>
+        /// <param name="self"></param>
+        private void OnSetupPlacementGhost(On.Player.orig_SetupPlacementGhost orig, Player self)
+        {
+            if (self.m_buildPieces == null)
+            {
+                orig(self);
+                return;
+            }
+
+            GameObject prefab = self.m_buildPieces.GetSelectedPrefab();
+            if (!prefab || !prefab.name.StartsWith(Blueprint.PieceBlueprintName))
+            {
+                orig(self);
+                return;
+            }
+
+            string bpname = prefab.name.Substring(Blueprint.PieceBlueprintName.Length + 1);
+            if (LocalBlueprints.TryGetValue(bpname, out var bp))
+            {
+                bp.InstantiateGhost();
+            }
+            
             orig(self);
         }
 
@@ -710,7 +743,7 @@ namespace PlanBuild.Blueprints
                     return MakeBlueprint(self);
                 }
                 // Place a known blueprint
-                if (Player.m_localPlayer.m_placementStatus == Player.PlacementStatus.Valid
+                if (self.m_placementStatus == Player.PlacementStatus.Valid
                     && piece.name != BlueprintRunePrefab.BlueprintSnapPointName
                     && piece.name != BlueprintRunePrefab.BlueprintCenterPointName
                     && piece.name.StartsWith(Blueprint.PieceBlueprintName))
@@ -777,8 +810,8 @@ namespace PlanBuild.Blueprints
             bool flatten = Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift);
             if (flatten)
             {
-                Vector2 extent = bp.GetExtent();
-                FlattenTerrain.FlattenForBlueprint(transform, extent.x, extent.y, bp.PieceEntries);
+                Bounds bounds = bp.GetBounds();
+                FlattenTerrain.FlattenForBlueprint(transform, bounds, bp.PieceEntries);
             }
 
             uint cntEffects = 0u;

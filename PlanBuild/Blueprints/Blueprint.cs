@@ -408,14 +408,20 @@ namespace PlanBuild.Blueprints
         {
             return PieceEntries.Count();
         }
+         
 
         /// <summary>
-        ///     Maximum X and Z position of this blueprint
+        ///     Get the bounds of this blueprint
         /// </summary>
         /// <returns></returns>
-        public Vector2 GetExtent()
+        public Bounds GetBounds()
         {
-            return new Vector2(PieceEntries.Max(x => x.posX), PieceEntries.Max(x => x.posZ));
+            Bounds bounds = new Bounds();
+            foreach(PieceEntry entry in PieceEntries)
+            {
+                bounds.Encapsulate(entry.GetPosition());
+            }
+            return bounds;
         }
 
         /// <summary>
@@ -450,7 +456,7 @@ namespace PlanBuild.Blueprints
                     }
                     else
                     {
-                        Logger.LogWarning("Multiple center points! Ignoring @ " + piece.transform.position);
+                        Logger.LogWarning($"Multiple center points! Ignoring @ {piece.transform.position}");
                     }
                     WearNTear wearNTear = piece.GetComponent<WearNTear>();
                     wearNTear.Remove();
@@ -458,7 +464,7 @@ namespace PlanBuild.Blueprints
                 }
                 if (!BlueprintManager.Instance.CanCapture(piece))
                 {
-                    Logger.LogWarning("Ignoring piece " + piece + ", not able to make Plan");
+                    Logger.LogWarning($"Ignoring piece {piece}, not able to make Plan");
                     continue;
                 }
                 piece.GetComponent<WearNTear>()?.Highlight();
@@ -556,7 +562,7 @@ namespace PlanBuild.Blueprints
         ///     used in this blueprint. Adds it to the <see cref="ZNetScene"/> and rune <see cref="PieceTable"/>.
         /// </summary>
         /// <returns>true if the prefab could be created</returns>
-        public bool CreatePrefab()
+        public bool CreatePiece()
         {
             if (Prefab != null)
             {
@@ -585,12 +591,12 @@ namespace PlanBuild.Blueprints
             Prefab.name = PrefabName;
 
             // Instantiate child objects
-            if (!GhostInstantiate(Prefab))
+            /*if (!GhostInstantiate(Prefab))
             {
                 Logger.LogWarning("Could not create prefab");
                 Object.DestroyImmediate(Prefab);
                 return false;
-            }
+            }*/
 
             // Set piece information
             Piece piece = Prefab.GetComponent<Piece>();
@@ -640,12 +646,173 @@ namespace PlanBuild.Blueprints
         }
 
         /// <summary>
+        ///     Instantiate this blueprints placement ghost
+        /// </summary>
+        /// <returns></returns>
+        public bool InstantiateGhost()
+        {
+            if (!Prefab)
+            {
+                return false;
+            }
+            if (Prefab.transform.childCount > 1)
+            {
+                return true;
+            }
+
+            GameObject baseObject = Prefab;
+            var ret = true;
+            ZNetView.m_forceDisableInit = true;
+
+            try
+            {
+                var pieces = new List<PieceEntry>(PieceEntries);
+                var maxX = pieces.Max(x => x.posX);
+                var maxZ = pieces.Max(x => x.posZ);
+
+                foreach (SnapPoint snapPoint in SnapPoints)
+                {
+                    GameObject snapPointObject = new GameObject
+                    {
+                        name = "_snappoint",
+                        layer = LayerMask.NameToLayer("piece"),
+                        tag = "snappoint"
+                    };
+                    snapPointObject.SetActive(false);
+                    Object.Instantiate(snapPointObject, snapPoint.GetPosition(), Quaternion.identity, baseObject.transform);
+                }
+
+                // Tiny collider for accurate placement
+                GameObject gameObject = new GameObject(PlaceColliderName);
+                gameObject.transform.SetParent(baseObject.transform);
+                gameObject.layer = LayerMask.NameToLayer("piece_nonsolid");
+                SphereCollider sphereCollider = gameObject.AddComponent<SphereCollider>();
+                sphereCollider.radius = 0.002f;
+              
+                var tf = baseObject.transform;
+                var quat = Quaternion.Euler(0, tf.rotation.eulerAngles.y, 0); 
+
+                var prefabs = new Dictionary<string, GameObject>();
+                foreach (var piece in pieces.GroupBy(x => x.name).Select(x => x.FirstOrDefault()))
+                {
+                    var go = PrefabManager.Instance.GetPrefab(piece.name);
+                    if (!go)
+                    {
+                        throw new Exception($"No prefab found for {piece.name}! You are probably missing a dependency for blueprint {Name}");
+                    }
+                    else
+                    {
+                        go.transform.SetPositionAndRotation(go.transform.position, quat);
+                        prefabs.Add(piece.name, go);
+                    }
+                }
+
+                for (int i = 0; i < pieces.Count; i++)
+                {
+                    PieceEntry piece = pieces[i];
+                    var piecePosition = tf.position + piece.GetPosition();
+
+
+                    GameObject pieceObject = new GameObject($"piece_entry ({i})");
+                    pieceObject.transform.SetParent(tf);
+                    pieceObject.transform.rotation = piece.GetRotation();
+                    pieceObject.transform.position = piecePosition;
+
+                    if (prefabs.TryGetValue(piece.name, out var prefab))
+                    {
+                        GameObject ghostPrefab;
+                        Vector3 ghostPosition;
+                        Quaternion ghostRotation;
+                        if (prefab.TryGetComponent(out WearNTear wearNTear) && wearNTear.m_new)
+                        {
+                            // Only instantiate the visual part
+                            ghostPrefab = wearNTear.m_new;
+                            ghostRotation = ghostPrefab.transform.localRotation;
+                            ghostPosition = ghostPrefab.transform.localPosition;
+                        }
+                        else
+                        {
+                            // No WearNTear?? Just use the entire prefab
+                            ghostPrefab = prefab;
+                            ghostRotation = Quaternion.identity;
+                            ghostPosition = Vector3.zero;
+                        }
+
+                        var child = Object.Instantiate(ghostPrefab, pieceObject.transform);
+                        child.transform.localRotation = ghostRotation;
+                        child.transform.localPosition = ghostPosition;
+                        PrepareGhostPiece(child);
+
+                        // Doors have a dynamic object that also needs to be added
+                        if (prefab.TryGetComponent(out Door door))
+                        {
+                            GameObject doorPrefab = door.m_doorObject;
+                            var doorChild = Object.Instantiate(doorPrefab, pieceObject.transform);
+                            doorChild.transform.localRotation = doorPrefab.transform.localRotation;
+                            doorChild.transform.localPosition = doorPrefab.transform.localPosition;
+                            PrepareGhostPiece(doorChild);
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError($"Error while instantiating {Name}: {ex}");
+                ret = false;
+            }
+            finally
+            {
+                ZNetView.m_forceDisableInit = false;
+            }
+
+            return ret;
+        }
+
+        /// <summary>
+        ///     Prepare a GameObject for the placement ghost
+        /// </summary>
+        /// <param name="child"></param>
+        private void PrepareGhostPiece(GameObject child)
+        {
+            // A Ghost doesn't need fancy scripts
+            foreach (var component in child.GetComponentsInChildren<MonoBehaviour>())
+            {
+                Object.Destroy(component);
+            }
+
+            // Also no fancy colliders
+            foreach(var collider in child.GetComponentsInChildren<Collider>())
+            {
+                Object.Destroy(collider);
+            }
+
+            // Disable ripple effect on ghost (only visible when using Skuld crystal)
+            MeshRenderer[] meshRenderers = child.GetComponentsInChildren<MeshRenderer>();
+            foreach (MeshRenderer meshRenderer in meshRenderers)
+            {
+                if (meshRenderer.sharedMaterial != null)
+                {
+                    Material[] sharedMaterials = meshRenderer.sharedMaterials;
+                    for (int j = 0; j < sharedMaterials.Length; j++)
+                    {
+                        Material material = new Material(sharedMaterials[j]);
+                        material.SetFloat("_RippleDistance", 0f);
+                        material.SetFloat("_ValueNoise", 0f);
+                        sharedMaterials[j] = material;
+                    }
+                    meshRenderer.sharedMaterials = sharedMaterials;
+                    meshRenderer.shadowCastingMode = ShadowCastingMode.Off;
+                }
+            }
+        }
+
+        /// <summary>
         ///     Removes and destroys this blueprints prefab, KeyHint and files from the game and filesystem.
         /// </summary>
-        public void Destroy()
+        public void DestroyBlueprint()
         {
             // Remove and destroy prefab
-            if (Prefab != null)
+            if (Prefab)
             {
                 // Remove from PieceTable
                 var table = PieceManager.Instance.GetPieceTable(BlueprintRunePrefab.PieceTableName);
@@ -699,161 +866,6 @@ namespace PlanBuild.Blueprints
         }
 
         /// <summary>
-        ///     Instantiate this blueprints placement ghost
-        /// </summary>
-        /// <param name="baseObject"></param>
-        /// <returns></returns>
-        private bool GhostInstantiate(GameObject baseObject)
-        {
-            var ret = true;
-            ZNetView.m_forceDisableInit = true;
-
-            try
-            {
-                var pieces = new List<PieceEntry>(PieceEntries);
-                var maxX = pieces.Max(x => x.posX);
-                var maxZ = pieces.Max(x => x.posZ);
-
-                foreach (SnapPoint snapPoint in SnapPoints)
-                {
-                    GameObject snapPointObject = new GameObject
-                    {
-                        name = "_snappoint",
-                        layer = LayerMask.NameToLayer("piece"),
-                        tag = "snappoint"
-                    };
-                    snapPointObject.SetActive(false);
-                    Object.Instantiate(snapPointObject, snapPoint.GetPosition(), Quaternion.identity, baseObject.transform);
-                }
-
-                //Tiny collider for accurate placement
-                GameObject gameObject = new GameObject(PlaceColliderName);
-                gameObject.transform.SetParent(baseObject.transform);
-                gameObject.layer = LayerMask.NameToLayer("piece_nonsolid");
-                SphereCollider sphereCollider = gameObject.AddComponent<SphereCollider>();
-                sphereCollider.radius = 0.002f;
-              
-                var tf = baseObject.transform;
-                var quat = Quaternion.Euler(0, tf.rotation.eulerAngles.y, 0); 
-
-                var prefabs = new Dictionary<string, GameObject>();
-                foreach (var piece in pieces.GroupBy(x => x.name).Select(x => x.FirstOrDefault()))
-                {
-                    var go = PrefabManager.Instance.GetPrefab(piece.name);
-                    if (!go)
-                    {
-                        Logger.LogWarning("No prefab found for " + piece.name + "! You are probably missing a dependency for blueprint " + Name);
-                        return false;
-                    }
-                    else
-                    {
-                        go.transform.SetPositionAndRotation(go.transform.position, quat);
-                        prefabs.Add(piece.name, go);
-                    }
-                }
-
-                for (int i = 0; i < pieces.Count; i++)
-                {
-                    PieceEntry piece = pieces[i];
-                    var piecePosition = tf.position + piece.GetPosition();
-
-
-                    GameObject pieceObject = new GameObject("piece_entry (" + i + ")");
-                    pieceObject.transform.SetParent(tf);
-                    pieceObject.transform.rotation = piece.GetRotation();
-                    pieceObject.transform.position = piecePosition;
-
-                    if (prefabs.TryGetValue(piece.name, out var prefab))
-                    {
-                        GameObject ghostPrefab;
-                        Vector3 ghostPosition;
-                        Quaternion ghostRotation;
-                        if (prefab.TryGetComponent(out WearNTear wearNTear) && wearNTear.m_new)
-                        {
-                            //Only instantiate the visual part
-                            ghostPrefab = wearNTear.m_new;
-                            ghostRotation = ghostPrefab.transform.localRotation;
-                            ghostPosition = ghostPrefab.transform.localPosition;
-                        }
-                        else
-                        {
-                            //No WearNTear?? Just use the entire prefab
-                            ghostPrefab = prefab;
-                            ghostRotation = Quaternion.identity;
-                            ghostPosition = Vector3.zero;
-                        }
-
-                        var child = Object.Instantiate(ghostPrefab, pieceObject.transform);
-                        child.transform.localRotation = ghostRotation;
-                        child.transform.localPosition = ghostPosition;
-                        MakeGhost(child);
-
-                        //Doors have a dynamic object that also needs to be added
-                        if (prefab.TryGetComponent(out Door door))
-                        {
-                            GameObject doorPrefab = door.m_doorObject;
-                            var doorChild = Object.Instantiate(doorPrefab, pieceObject.transform);
-                            doorChild.transform.localRotation = doorPrefab.transform.localRotation;
-                            doorChild.transform.localPosition = doorPrefab.transform.localPosition;
-                            MakeGhost(doorChild);
-                        }
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                Logger.LogError($"Error while instantiating {Name}: {ex}");
-                ret = false;
-            }
-            finally
-            {
-                ZNetView.m_forceDisableInit = false;
-            }
-
-            return ret;
-        }
-
-        /// <summary>
-        ///     Prepare a GameObject for the placement ghost
-        /// </summary>
-        /// <param name="child"></param>
-        private void MakeGhost(GameObject child)
-        {
-            // A Ghost doesn't need fancy scripts
-            foreach (var component in child.GetComponentsInChildren<MonoBehaviour>())
-            {
-                Object.Destroy(component);
-            }
-
-            foreach(var collider in child.GetComponentsInChildren<Collider>())
-            {
-                Object.Destroy(collider);
-            }
-
-            //Disable ripple effect on ghost (only visible when using Skuld crystal)
-            MeshRenderer[] meshRenderers = child.GetComponentsInChildren<MeshRenderer>();
-            foreach (MeshRenderer meshRenderer in meshRenderers)
-            {
-                if (meshRenderer.sharedMaterial != null)
-                {
-                    Material[] sharedMaterials = meshRenderer.sharedMaterials;
-                    for (int j = 0; j < sharedMaterials.Length; j++)
-                    {
-                        Material material = new Material(sharedMaterials[j]);
-                        material.SetFloat("_RippleDistance", 0f);
-                        material.SetFloat("_ValueNoise", 0f);
-                        sharedMaterials[j] = material;
-                    }
-                    meshRenderer.sharedMaterials = sharedMaterials;
-                    meshRenderer.shadowCastingMode = ShadowCastingMode.Off;
-                }
-            }
-
-            // m_placementGhost is updated on the fly instead
-            // ShaderHelper.UpdateTextures(child, ShaderHelper.ShaderState.Floating);
-        }
-
-        /// <summary>
         ///     Helper class for naming and saving a captured blueprint via GUI
         ///     Implements the Interface <see cref="TextReceiver" />. SetText is called from <see cref="TextInput" /> upon entering
         ///     an name for the blueprint.<br />
@@ -889,7 +901,7 @@ namespace PlanBuild.Blueprints
                     if (BlueprintManager.LocalBlueprints.ContainsKey(newbp.ID))
                     {
                         Blueprint oldbp = BlueprintManager.LocalBlueprints[newbp.ID];
-                        oldbp.Destroy();
+                        oldbp.DestroyBlueprint();
                         BlueprintManager.LocalBlueprints.Remove(newbp.ID);
                     }
 
@@ -903,6 +915,10 @@ namespace PlanBuild.Blueprints
             /// <returns><see cref="IEnumerator"/> yields for the <see cref="Coroutine"/></returns>
             public IEnumerator AddBlueprint()
             {
+                // Hide console
+                Console.instance.m_chatWindow.gameObject.SetActive(false);
+                Console.instance.Update();
+                
                 // Hide Hud if active
                 bool oldHud = Hud.instance.m_userHidden;
                 Hud.instance.m_userHidden = true;
@@ -955,7 +971,7 @@ namespace PlanBuild.Blueprints
                 yield return new WaitForEndOfFrame();
 
                 // Create and load blueprint prefab
-                newbp.CreatePrefab();
+                newbp.CreatePiece();
                 BlueprintManager.LocalBlueprints.Add(newbp.ID, newbp);
                 BlueprintGUI.ReloadBlueprints(BlueprintLocation.Local);
 

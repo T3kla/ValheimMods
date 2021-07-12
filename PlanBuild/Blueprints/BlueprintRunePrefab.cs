@@ -32,7 +32,7 @@ namespace PlanBuild.Blueprints
                 UseCustomCategories = true,
                 CustomCategories = new string[]
                 {
-                    "Tools", "Blueprints"
+                    CategoryTools, CategoryBlueprints
                 }
             });
             PieceManager.Instance.AddPieceTable(table);
@@ -49,7 +49,6 @@ namespace PlanBuild.Blueprints
             });
             ItemManager.Instance.AddItem(item);
             BlueprintRuneItemName = item.ItemDrop.m_itemData.m_shared.m_name;
-            item.ItemDrop.m_itemData.m_shared.m_buildPieces = PieceManager.Instance.GetPieceTable(PlanPiecePrefab.PlanHammerPieceTableName);
 
             // Tool pieces
             CustomPiece piece;
@@ -68,6 +67,7 @@ namespace PlanBuild.Blueprints
                 });
                 PieceManager.Instance.AddPiece(piece);
             }
+            // World runes
             foreach (string pieceName in new string[]
             {
                 StandingBlueprintRune, BlueprintRuneStack
@@ -87,6 +87,7 @@ namespace PlanBuild.Blueprints
                     }
                 });
                 piece.PiecePrefab.AddComponent<WorldBlueprintRune>();
+                piece.FixReference = true;
                 PieceManager.Instance.AddPiece(piece);
             }
             // Blueprint stub
