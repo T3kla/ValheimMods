@@ -12,29 +12,19 @@ using Random = UnityEngine.Random;
 
 namespace PlanBuild.Blueprints
 {
-    class BlueprintPlacement : MonoBehaviour
-    {  
-        internal float speed = 2f;
+    class BlueprintPlacement : MovingRuneCircle
+    {   
         internal Blueprint blueprint;
         internal bool placeDirect;
         internal long creatorID;
-        
-        internal Vector3 relativeTargetPosition; 
+         
         private Queue<PieceEntry> constructionQueue;
         private readonly List<WearNTear> placedWearNTears = new List<WearNTear>();
-        private ZNetView m_nview;
+ 
         private ZDO blueprintZDO;
         private ZDOID m_uid;
         private ZDOIDSet createdPlans;
-
-        internal Transform runeCircleTransform;
-
-        public void Awake()
-        {
-            runeCircleTransform = transform.Find("rune_circle"); 
-            m_nview = GetComponent<ZNetView>(); 
-        }
-
+         
         public void Start()
         { 
             GameObject blueprintPrefab = PrefabManager.Instance.GetPrefab(Blueprint.PieceBlueprintName);
@@ -47,22 +37,19 @@ namespace PlanBuild.Blueprints
             
             constructionQueue = new Queue<PieceEntry>(blueprint.PieceEntries.OrderBy(entry => entry.posY));
         }
-
-        public void Update()
+        
+        internal override bool UpdateCircle()
         {
-            Vector3 previousPosition = runeCircleTransform.localPosition;
-            Vector3 newPosition = Vector3.MoveTowards(previousPosition, relativeTargetPosition, Time.deltaTime * speed);
-            runeCircleTransform.localPosition = newPosition;
-            
+
             uint cntEffects = 0u;
             uint maxEffects = 5u;
 
             while (constructionQueue.Count > 0)
             {
                 PieceEntry next = constructionQueue.Peek();
-                if (next.posY > newPosition.y)
+                if (next.posY > runeCircleTransform.localPosition.y)
                 {
-                    return;
+                    return false;
                 }
                 PieceEntry entry = constructionQueue.Dequeue();
                 // Final position
@@ -71,8 +58,8 @@ namespace PlanBuild.Blueprints
                 Jotunn.Logger.LogDebug($"Placing entry {entry.name} @ {entryPosition}, {constructionQueue.Count} remaining");
 #endif
 
-             
-                if(!m_nview.IsOwner())
+
+                if (!m_nview.IsOwner())
                 {
                     continue;
                 }
@@ -139,7 +126,7 @@ namespace PlanBuild.Blueprints
                 if (cntEffects < maxEffects)
                 {
                     newpiece.m_placeEffect.Create(gameObject.transform.position, Quaternion.Euler(0, Random.Range(0, 360), 0), gameObject.transform, 1f);
-                    if(placeDirect)
+                    if (placeDirect)
                     {
                         Player.m_localPlayer.AddNoise(50f);
                     }
@@ -149,20 +136,20 @@ namespace PlanBuild.Blueprints
                 // Count up player builds
                 Game.instance.GetPlayerProfile().m_playerStats.m_builds++;
             }
-             
-            blueprintZDO.Set(PlanPiece.zdoBlueprintPiece, createdPlans.ToZPackage().GetArray());
-            
 
-            if (Vector3.Distance(previousPosition, relativeTargetPosition) < 0.001f)
+            blueprintZDO.Set(PlanPiece.zdoBlueprintPiece, createdPlans.ToZPackage().GetArray());
+
+            return true;
+        }
+
+        internal override void OnMovementComplete()
+        {
+            Jotunn.Logger.LogDebug($"Placement process complete for blueprint {blueprint.Name}!");
+            foreach (WearNTear wearNTear in placedWearNTears)
             {
-                Jotunn.Logger.LogDebug($"Placement process complete for blueprint {blueprint.Name}!");
-                foreach(WearNTear wearNTear in placedWearNTears)
-                {
-                    wearNTear.enabled = true;
-                    wearNTear.OnPlaced();
-                }
-                Destroy(gameObject);
+                wearNTear.enabled = true;
+                wearNTear.OnPlaced();
             }
-        } 
+        }
     }
 }

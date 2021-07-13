@@ -808,44 +808,11 @@ namespace PlanBuild.Blueprints
                 FlattenTerrain.FlattenForBlueprint(transform, bounds, bp.PieceEntries);
             }
 
-            Vector3 circlePosition = bounds.center;
-            circlePosition.y = bounds.min.y;  
-#if DEBUG
-            Jotunn.Logger.LogDebug($"Circle spawn position @ {circlePosition}");
-#endif
-
-            float magnitude = new Vector2(bounds.extents.x, bounds.extents.z).magnitude + 1f;
-#if DEBUG
-            Jotunn.Logger.LogDebug($"Magnitude of rune circle: {magnitude}");
-#endif
- 
-            Vector3 targetPosition = bounds.center;
-            targetPosition.y = bounds.max.y + 0.3f;
-
-#if DEBUG
-            Jotunn.Logger.LogDebug($"Circle target position @ {targetPosition}");
-#endif
-
-            GameObject circlePrefab = PrefabManager.Instance.GetPrefab(BlueprintRunePrefab.BlueprintCaptureFXCircle);
-            GameObject circleObject = Object.Instantiate(circlePrefab, position, rotation);
-
-            Transform placerTransform = circleObject.transform;
-            for (int i = 0; i < placerTransform.childCount; i++)
-            {
-                Transform effectTransform = placerTransform.GetChild(i);
-                effectTransform.localPosition = circlePosition;
-                effectTransform.localScale = Vector3.one * magnitude;
-            }
-            
-            BlueprintPlacement blueprintPlacement = circleObject.AddComponent<BlueprintPlacement>();
-            //ParticleSystem particleSystem = blueprintPlacement.runeCircleTransform.GetComponent<ParticleSystem>(); 
-            //ParticleSystem.VelocityOverLifetimeModule velocityOverLifetime = particleSystem.velocityOverLifetime;
-            //velocityOverLifetime.speedModifierMultiplier = magnitude;
+            MovingRuneCircle.SpawnRuneCircle<BlueprintPlacement>(position, rotation, bounds, out var blueprintPlacement); 
             blueprintPlacement.placeDirect = placeDirect;
             blueprintPlacement.blueprint = bp;
             blueprintPlacement.creatorID = player.GetPlayerID();
-            blueprintPlacement.relativeTargetPosition = targetPosition;
-             
+            
             // Dont set the blueprint piece and clutter the world with it
             return false;
         }
@@ -868,11 +835,15 @@ namespace PlanBuild.Blueprints
                 if (blueprintID != ZDOID.None)
                 {
                     int removedPieces = 0;
-                    foreach (PlanPiece pieceToRemove in GetPlanPiecesInBlueprint(blueprintID))
+                    List<PlanPiece> pieceToRemoves = GetPlanPiecesInBlueprint(blueprintID); 
+                    foreach (PlanPiece pieceToRemove in pieceToRemoves)
                     {
+                        
                         pieceToRemove.Remove();
                         removedPieces++;
                     }
+
+                    
 
                     GameObject blueprintObject = ZNetScene.instance.FindInstance(blueprintID);
                     if (blueprintObject)

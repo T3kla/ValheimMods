@@ -50,6 +50,7 @@ namespace PlanBuild
 
             // Init Plans
             AssetBundle planbuildBundle = AssetUtils.LoadAssetBundleFromResources("planbuild", assembly);
+            ShaderHelper.planMaterial = planbuildBundle.LoadAsset<Material>("PlanMaterial");
             planTotemPrefab = new PlanTotemPrefab(planbuildBundle);
             planbuildBundle.Unload(false);
             PlanManager.Instance.Init();
@@ -61,7 +62,7 @@ namespace PlanBuild
             BlueprintManager.Instance.Init();
 
             // Init Shader
-            ShaderHelper.planShader = Shader.Find("Lux Lit Particles/ Bumped");
+            ShaderHelper.planShader = Shader.Find("Custom/Bonemass");
 
             // Harmony patching
             Patches.Apply();

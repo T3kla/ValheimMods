@@ -945,22 +945,13 @@ namespace PlanBuild.Blueprints
                         oldbp.DestroyBlueprint();
                         BlueprintManager.LocalBlueprints.Remove(newbp.ID);
                     }
-                    
+
                     //Fancy FX
-                    GameObject circleObject = Object.Instantiate(PrefabManager.Instance.GetPrefab(BlueprintRunePrefab.BlueprintCaptureFXCircle), fxPosition, Quaternion.identity);
-
-                    Transform placerTransform = circleObject.transform;
-                    for (int j = 0; j < placerTransform.childCount; j++)
-                    {
-                        Transform effectTransform = placerTransform.GetChild(j);
-                        effectTransform.localPosition = circlePosition;
-                        effectTransform.localScale = Vector3.one * magnitude;
-                    }
-                    
-                    BlueprintCapture blueprintCaptureFX = circleObject.AddComponent<BlueprintCapture>();
+                    MovingRuneCircle.SpawnRuneCircle<BlueprintCapture>(fxPosition, Quaternion.identity, newbp.GetBounds(), out var blueprintCaptureFX); 
+                    Object.Instantiate(PrefabManager.Instance.GetPrefab(BlueprintRunePrefab.BlueprintCaptureFXCircle), fxPosition, Quaternion.identity);
+                     
                     blueprintCaptureFX.m_pieces = pieces;
-                    blueprintCaptureFX.relativeTargetPosition = targetPosition;
-
+                    
                     PlanBuildPlugin.Instance.StartCoroutine(AddBlueprint());
                 }
             }

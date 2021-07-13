@@ -1,4 +1,5 @@
 ﻿using BepInEx.Configuration;
+using Jotunn.Managers;
 using System;
 using System.Collections.Generic;
 using UnityEngine;
@@ -14,6 +15,8 @@ namespace PlanBuild
             Floating,
             Skuld
         }
+
+        internal static Material planMaterial;
 
         private static readonly Dictionary<string, Material> originalMaterialDict = new Dictionary<string, Material>();
         private static readonly Dictionary<string, Material> supportedMaterialDict = new Dictionary<string, Material>();
@@ -34,9 +37,10 @@ namespace PlanBuild
         {
             Texture2D texture2D = new Texture2D(1, 1);
             texture2D.SetPixel(0, 0, color);
+            
             return texture2D;
         }
-
+         
         public static void UpdateTextures(GameObject m_placementplan, ShaderState shaderState)
         {  
             MeshRenderer[] meshRenderers = m_placementplan.GetComponentsInChildren<MeshRenderer>();
@@ -88,6 +92,7 @@ namespace PlanBuild
                 case ShaderState.Skuld:
                     return originalMaterialDict[originalMaterial.name];
                 case ShaderState.Supported:
+                    return planMaterial;
                     if (!supportedMaterialDict.TryGetValue(originalMaterial.name, out Material supportedMaterial))
                     {
                         supportedMaterial = new Material(originalMaterial)
@@ -95,6 +100,8 @@ namespace PlanBuild
                             name = originalMaterial.name
                         };
                         supportedMaterial.SetOverrideTag("RenderType", "Transparent");
+                        supportedMaterial.SetOverrideTag("SHADOWSUPPORT", "false");
+                        supportedMaterial.mainTexture = null;
                         supportedMaterial.shader = planShader;
                         Color supportedMaterialColor = supportedPlanColorConfig.Value;
                         supportedMaterialColor.a *= transparency;
@@ -105,6 +112,7 @@ namespace PlanBuild
                     }
                     return supportedMaterial; 
                 case ShaderState.Floating:
+                    return planMaterial;
                     if (!unsupportedMaterialDict.TryGetValue(originalMaterial.name, out Material unsupportedMaterial))
                     {
                         unsupportedMaterial = new Material(originalMaterial)
@@ -112,6 +120,8 @@ namespace PlanBuild
                             name = originalMaterial.name
                         };
                         unsupportedMaterial.SetOverrideTag("RenderType", "Transparent");
+                        unsupportedMaterial.SetOverrideTag("SHADOWSUPPORT", "false");
+                        unsupportedMaterial.mainTexture = null;
                         unsupportedMaterial.shader = planShader;
                         Color unsupportedMaterialColor = unsupportedColorConfig.Value;
                         unsupportedMaterialColor.a *= transparency;
