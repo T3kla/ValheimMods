@@ -19,12 +19,16 @@ Material:
   m_SavedProperties:
     serializedVersion: 3
     m_TexEnvs:
-    - _MainTex:
+    - _EmissionTex:
         m_Texture: {fileID: 2800000, guid: 385ce4c796802e54fb1b8b059dd7dd7a, type: 3}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _MainTex:
+        m_Texture: {fileID: 0}
         m_Scale: {x: 2, y: 2}
         m_Offset: {x: 0, y: 0}
     - _NoiseTex:
-        m_Texture: {fileID: 2800000, guid: 88ba55b05391613458f1c7cc8af068f1, type: 3}
+        m_Texture: {fileID: 2800000, guid: 1acb303842fda874cb2b02ce9b7533f4, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _Normal:
@@ -35,6 +39,7 @@ Material:
     - _Cull: 0
     m_Colors:
     - _Color: {r: 1, g: 0.020000001, b: 0, a: 1}
-    - _MainMovementDirection: {r: 0, g: -0.5, b: 0, a: 1}
+    - _EmissionColor: {r: 1, g: 0, b: 0, a: 0.0627451}
+    - _MainMovementDirection: {r: -0.01, g: -0.05, b: 0, a: 1}
     - _MovementDirection: {r: 0, g: 0.3, b: 0, a: 1}
-    - _NoiseMovementDirection: {r: 0, g: 0.1, b: 0, a: 1}
+    - _NoiseMovementDirection: {r: 0, g: 0.5, b: 0, a: 1}

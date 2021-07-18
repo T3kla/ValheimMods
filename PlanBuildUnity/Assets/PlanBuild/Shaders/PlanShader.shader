@@ -55,7 +55,7 @@
             // put more per-instance properties here
         UNITY_INSTANCING_BUFFER_END(Props)
         
-        fixed4 pixel, alphaPixel;
+        fixed4 pixel, emissionPixel, alphaPixel;
         void surf (Input IN, inout SurfaceOutputStandard o)
         {
             
@@ -64,11 +64,11 @@
             IN.uv_EmissionTex += _MainMovementDirection * _Time.y;
 
             alphaPixel = tex2D (_NoiseTex, IN.uv_NoiseTex);
-            
-            pixel = tex2D (_EmissionTex, IN.uv_EmissionTex) * _EmissionColor * alphaPixel.r;
-            clip(alphaPixel.r - 0.5);
+            emissionPixel = tex2D(_EmissionTex, IN.uv_EmissionTex);
+            pixel = emissionPixel * _EmissionColor * alphaPixel.r;
+            clip(pixel.r - 0.0001);
             o.Albedo = pixel.rgb;
-            o.Alpha = alphaPixel.r;
+            o.Alpha = pixel.r ;
 			o.Emission = pixel.rgb;
             o.Occlusion = 0;
             o.Smoothness = 1;
