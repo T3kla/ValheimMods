@@ -2,8 +2,8 @@
 {
 	Properties
     {
-        [HDR] _Color ("Color", Color) = (0,0,0,0)
-        [HDR] _EmissionColor("Emission Color", Color) = (0,0,0,0)
+        _Color ("Color", Color) = (0,0,0,0)
+        _EmissionColor("Emission Color", Color) = (0,0,0,0)
         _MainTex ("Albedo (RGB)", 2D) = "black" {} 
         _EmissionTex("Emission (RGB)", 2D) = "black" {}
 
@@ -15,8 +15,8 @@
     }
     SubShader
     {
-        Tags{ "RenderType" = "Fade" "IgnoreProjector" = "True" "Queue" = "Transparent" "IsEmissive" = "true" }
-        Cull Off
+        Tags{ "RenderType" = "Transparent" "IgnoreProjector" = "True" "Queue" = "Transparent" "IsEmissive" = "true" }
+ 
         Blend SrcAlpha SrcAlpha
         LOD 100
         Cull [_Cull]
@@ -65,13 +65,12 @@
 
             alphaPixel = tex2D (_NoiseTex, IN.uv_NoiseTex);
             emissionPixel = tex2D(_EmissionTex, IN.uv_EmissionTex);
-            pixel = emissionPixel * _EmissionColor * alphaPixel.r;
-            clip(pixel.r - 0.0001);
-            o.Albedo = pixel.rgb;
-            o.Alpha = pixel.r ;
-			o.Emission = pixel.rgb;
+            pixel = emissionPixel * _EmissionColor * alphaPixel.r; 
+            o.Albedo = lerp(_EmissionColor.rgb, _Color, step(pixel.r, 0.1));
+            o.Alpha = max(pixel.r, _Color.a);
+			o.Emission = o.Albedo.rgb * o.Alpha;
             o.Occlusion = 0;
-            o.Smoothness = 1;
+            o.Smoothness = 0;
             o.Metallic = 0;
             //o.Alpha = alphaPixel.r;
         }

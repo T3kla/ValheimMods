@@ -89,69 +89,74 @@ namespace PlanBuild.PlanBuild
             orig(self);
         }
 
-        private bool ScanPieceTables()
+        private void ScanPieceTables()
         {
-            Jotunn.Logger.LogDebug("Scanning PieceTables for Pieces");
-            bool addedPiece = false;
-            PieceTable planPieceTable = PieceManager.Instance.GetPieceTable(PlanPiecePrefab.PieceTableName);
-            foreach (GameObject item in ObjectDB.instance.m_items)
+            try
             {
-                PieceTable pieceTable = item.GetComponent<ItemDrop>()?.m_itemData.m_shared.m_buildPieces;
-                if (pieceTable == null ||
-                    pieceTable.name.Equals(PlanPiecePrefab.PieceTableName) ||
-                    pieceTable.name.Equals(BlueprintRunePrefab.PieceTableName))
+                Jotunn.Logger.LogDebug("Scanning PieceTables for Pieces");
+                PieceTable planPieceTable = PieceManager.Instance.GetPieceTable(PlanPiecePrefab.PieceTableName);
+                foreach (GameObject item in ObjectDB.instance.m_items)
                 {
-                    continue;
-                }
-                foreach (GameObject piecePrefab in pieceTable.m_pieces)
-                {
-                    if (!piecePrefab)
+                    PieceTable pieceTable = item.GetComponent<ItemDrop>()?.m_itemData.m_shared.m_buildPieces;
+                    if (pieceTable == null ||
+                        pieceTable.name.Equals(PlanPiecePrefab.PieceTableName) ||
+                        pieceTable.name.Equals(BlueprintRunePrefab.PieceTableName))
                     {
-                        Jotunn.Logger.LogWarning($"Invalid prefab in {item.name} PieceTable");
                         continue;
                     }
-                    Piece piece = piecePrefab.GetComponent<Piece>();
-                    if (!piece)
+                    foreach (GameObject piecePrefab in pieceTable.m_pieces)
                     {
-                        Jotunn.Logger.LogWarning($"Recipe in {item.name} has no Piece?! {piecePrefab.name}");
-                        continue;
-                    }
-                    try
-                    {
-                        if (piece.name == "piece_repair")
+                        if (!piecePrefab)
                         {
+                            Jotunn.Logger.LogWarning($"Invalid prefab in {item.name} PieceTable");
                             continue;
                         }
-                        if (planPiecePrefabs.ContainsKey(piece.name))
+                        Piece piece = piecePrefab.GetComponent<Piece>();
+                        if (!piece)
                         {
-                            continue;
-                        }
-                        if (!CanCreatePlan(piece))
-                        {
-                            continue;
-                        }
-                        if (!EnsurePrefabRegistered(piece))
-                        {
+                            Jotunn.Logger.LogWarning($"Recipe in {item.name} has no Piece?! {piecePrefab.name}");
                             continue;
                         }
 
-                        PlanPiecePrefab planPiece = new PlanPiecePrefab(piece);
-                        PieceManager.Instance.AddPiece(planPiece);
-                        planPiecePrefabs.Add(piece.name, planPiece);
-                        PrefabManager.Instance.RegisterToZNetScene(planPiece.PiecePrefab);
-                        if (!planPieceTable.m_pieces.Contains(planPiece.PiecePrefab))
+                        try
                         {
-                            planPieceTable.m_pieces.Add(planPiece.PiecePrefab);
-                            addedPiece = true;
+                            if (piece.name == "piece_repair")
+                            {
+                                continue;
+                            }
+                            if (planPiecePrefabs.ContainsKey(piece.name))
+                            {
+                                continue;
+                            }
+                            if (!CanCreatePlan(piece))
+                            {
+                                continue;
+                            }
+                            if (!EnsurePrefabRegistered(piece))
+                            {
+                                continue;
+                            }
+
+                            PlanPiecePrefab planPiece = new PlanPiecePrefab(piece);
+                            PieceManager.Instance.AddPiece(planPiece);
+                            planPiecePrefabs.Add(piece.name, planPiece);
+                            PrefabManager.Instance.RegisterToZNetScene(planPiece.PiecePrefab);
+                            if (!planPieceTable.m_pieces.Contains(planPiece.PiecePrefab))
+                            {
+                                planPieceTable.m_pieces.Add(planPiece.PiecePrefab);
+                            }
                         }
-                    }
-                    catch (Exception e)
-                    {
-                        Jotunn.Logger.LogWarning($"Error while creating plan of {piece.name}: {e}");
+                        catch (Exception e)
+                        {
+                            Jotunn.Logger.LogWarning($"Error while creating plan of {piece.name}: {e}");
+                        }
                     }
                 }
             }
-            return addedPiece;
+            catch (Exception e)
+            {
+                Jotunn.Logger.LogWarning($"Error while scanning piecetables: {e}");
+            }
         }
 
         public static bool CanCreatePlan(Piece piece)
@@ -209,25 +214,33 @@ namespace PlanBuild.PlanBuild
             }
 
             Jotunn.Logger.LogDebug("Updating known Recipes");
-            foreach (PlanPiecePrefab planPiece in planPiecePrefabs.Values)
+            try
             {
-                if (!showAllPieces.Value && !player.HaveRequirements(planPiece.originalPiece, Player.RequirementMode.IsKnown))
+
+                foreach (PlanPiecePrefab planPiece in planPiecePrefabs.Values)
                 {
-                    if (player.m_knownRecipes.Contains(planPiece.Piece.m_name))
+                    if (!showAllPieces.Value && !player.HaveRequirements(planPiece.originalPiece, Player.RequirementMode.IsKnown))
                     {
-                        player.m_knownRecipes.Remove(planPiece.Piece.m_name);
-                        Jotunn.Logger.LogDebug($"Removing planned piece from m_knownRecipes: {planPiece.Piece.m_name}");
+                        if (player.m_knownRecipes.Contains(planPiece.Piece.m_name))
+                        {
+                            player.m_knownRecipes.Remove(planPiece.Piece.m_name);
+                            Jotunn.Logger.LogDebug($"Removing planned piece from m_knownRecipes: {planPiece.Piece.m_name}");
+                        }
+                    }
+                    else if (!player.m_knownRecipes.Contains(planPiece.Piece.m_name))
+                    {
+                        player.m_knownRecipes.Add(planPiece.Piece.m_name);
+                        Jotunn.Logger.LogDebug($"Adding planned piece to m_knownRecipes: {planPiece.Piece.m_name}");
                     }
                 }
-                else if (!player.m_knownRecipes.Contains(planPiece.Piece.m_name))
-                {
-                    player.m_knownRecipes.Add(planPiece.Piece.m_name);
-                    Jotunn.Logger.LogDebug($"Adding planned piece to m_knownRecipes: {planPiece.Piece.m_name}");
-                }
-            }
 
-            PieceManager.Instance.GetPieceTable(PlanPiecePrefab.PieceTableName)
-                .UpdateAvailable(player.m_knownRecipes, player, true, false);
+                PieceManager.Instance.GetPieceTable(PlanPiecePrefab.PieceTableName)
+                    .UpdateAvailable(player.m_knownRecipes, player, true, false);
+            }
+            catch (Exception e)
+            {
+                Jotunn.Logger.LogWarning($"{e}");
+            }
         }
 
         public void TogglePlanBuildMode()
@@ -253,7 +266,7 @@ namespace PlanBuild.PlanBuild
             }
             Player.m_localPlayer.UnequipItem(blueprintRune);
             Player.m_localPlayer.EquipItem(blueprintRune);
-             
+
             Player.m_localPlayer.UpdateKnownRecipesList();
         }
     }
