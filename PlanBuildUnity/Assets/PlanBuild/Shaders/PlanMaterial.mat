@@ -21,15 +21,15 @@ Material:
     m_TexEnvs:
     - _EmissionTex:
         m_Texture: {fileID: 2800000, guid: 385ce4c796802e54fb1b8b059dd7dd7a, type: 3}
-        m_Scale: {x: 3, y: 3}
+        m_Scale: {x: 5, y: 5}
         m_Offset: {x: 0, y: 0}
     - _MainTex:
         m_Texture: {fileID: 0}
         m_Scale: {x: 2, y: 2}
         m_Offset: {x: 0, y: 0}
     - _NoiseTex:
-        m_Texture: {fileID: 2800000, guid: 1acb303842fda874cb2b02ce9b7533f4, type: 3}
-        m_Scale: {x: 1, y: 1}
+        m_Texture: {fileID: 2800000, guid: d506ca7b6c4f069418f9e0f991761c0f, type: 3}
+        m_Scale: {x: 0.2, y: 0.2}
         m_Offset: {x: 0, y: 0}
     - _Normal:
         m_Texture: {fileID: 0}
@@ -38,8 +38,10 @@ Material:
     m_Floats:
     - _Cull: 0
     m_Colors:
-    - _Color: {r: 1, g: 1, b: 1, a: 0.09803922}
-    - _EmissionColor: {r: 1, g: 0, b: 0, a: 0.8509804}
+    - _Color: {r: 1, g: 1, b: 1, a: 0.015686275}
+    - _EmissionColor: {r: 0, g: 0, b: 0, a: 0}
+    - _IgnoreNormal: {r: 0, g: 1, b: 0, a: 0}
     - _MainMovementDirection: {r: 0, g: -0.15, b: 0, a: 1}
     - _MovementDirection: {r: 0, g: 0.3, b: 0, a: 1}
-    - _NoiseMovementDirection: {r: 0.01, g: 0.05, b: 0, a: 1}
+    - _NoiseMovementDirection: {r: 0.03, g: 0.02, b: 0, a: 1}
+    - _RuneColor: {r: 1, g: 0, b: 0, a: 0.18431373}
