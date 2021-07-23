@@ -86,8 +86,7 @@ Shader "Unlit/UnlitPlanShader"
                 float2 zEmissionCoordinate = TRANSFORM_TEX(textureCoordinateZ, _EmissionTex);
 
 
-                float2 noiseCoordinate =  TRANSFORM_TEX(textureCoordinateZ, _NoiseTex);
-
+               
                
                 xEmissionCoordinate = xEmissionCoordinate + _MainMovementDirection * _Time.y;
                 yEmissionCoordinate = yEmissionCoordinate + _MainMovementDirection * _Time.y;
@@ -101,16 +100,25 @@ Shader "Unlit/UnlitPlanShader"
                 float yNormalFactor = abs(dot(v.normal, float3(0, 1, 0)));
                 float zNormalFactor = abs(dot(v.normal, float3(0, 0, 1)));
 
-                noiseCoordinate = noiseCoordinate + _NoiseMovementDirection * _Time.y;
-                float noiseAlpha = tex2D(_NoiseTex, noiseCoordinate).r;
+                float2 xNoiseCoordinate = TRANSFORM_TEX(textureCoordinateX, _NoiseTex);
+                float2 yNoiseCoordinate = TRANSFORM_TEX(textureCoordinateY, _NoiseTex);
+                float2 zNoiseCoordinate = TRANSFORM_TEX(textureCoordinateZ, _NoiseTex);
 
-                xRuneAlpha = noiseAlpha * xRuneAlpha;
-                yRuneAlpha = noiseAlpha * yRuneAlpha;
-                zRuneAlpha = noiseAlpha * zRuneAlpha;
+                xNoiseCoordinate = xNoiseCoordinate + _NoiseMovementDirection * _Time.y;
+                yNoiseCoordinate = yNoiseCoordinate + _NoiseMovementDirection * _Time.y;
+                zNoiseCoordinate = zNoiseCoordinate + _NoiseMovementDirection * _Time.y;
 
-                float xRuneSelect = step(0.08, noiseAlpha * step(0.01, xRuneAlpha));
-                float yRuneSelect = step(0.08, noiseAlpha * step(0.01, yRuneAlpha));
-                float zRuneSelect = step(0.08, noiseAlpha * step(0.01, zRuneAlpha));
+                float xNoiseAlpha = tex2D(_NoiseTex, xNoiseCoordinate).r;
+                float yNoiseAlpha = tex2D(_NoiseTex, yNoiseCoordinate).r;
+                float zNoiseAlpha = tex2D(_NoiseTex, zNoiseCoordinate).r;
+
+                xRuneAlpha = xNoiseAlpha * xRuneAlpha;
+                yRuneAlpha = yNoiseAlpha * yRuneAlpha;
+                zRuneAlpha = zNoiseAlpha * zRuneAlpha;
+
+                float xRuneSelect = step(0.08, xNoiseAlpha * step(0.01, xRuneAlpha));
+                float yRuneSelect = step(0.08, yNoiseAlpha * step(0.01, yRuneAlpha));
+                float zRuneSelect = step(0.08, zNoiseAlpha * step(0.01, zRuneAlpha));
 
                 float xNormalSelect = smoothstep(0.67, 0.8, xNormalFactor);
                 float yNormalSelect = smoothstep(0.67, 0.8, yNormalFactor);
