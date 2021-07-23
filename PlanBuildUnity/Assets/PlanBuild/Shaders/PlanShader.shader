@@ -47,8 +47,7 @@
 
         struct Input
         {  
-            float3 worldPos;
-            float4 screenPos;
+            float3 worldPos; 
             float3 worldNormal;
         };
          
@@ -64,27 +63,64 @@
         UNITY_INSTANCING_BUFFER_END(Props)
          
         void surf (Input IN, inout SurfaceOutput o)
-        { 
-            float2 textureCoordinate = IN.worldPos.xz;
-            float2 emissionCoordinate = TRANSFORM_TEX(textureCoordinate, _EmissionTex);
-            float2 noiseCoordinate = IN.worldPos.xy + IN.worldPos.z;
+        {  
+
+            float2 textureCoordinateX = IN.worldPos.zy;
+            float2 textureCoordinateY = IN.worldPos.xz;
+            float2 textureCoordinateZ = IN.worldPos.xy;
+
+            float2 xEmissionCoordinate = TRANSFORM_TEX(textureCoordinateX, _EmissionTex);
+            float2 yEmissionCoordinate = TRANSFORM_TEX(textureCoordinateY, _EmissionTex);
+            float2 zEmissionCoordinate = TRANSFORM_TEX(textureCoordinateZ, _EmissionTex);
+
+
+            float2 noiseCoordinate = IN.worldPos.zy + IN.worldPos.z;
             noiseCoordinate = TRANSFORM_TEX(noiseCoordinate, _NoiseTex);
 
             noiseCoordinate = noiseCoordinate + _NoiseMovementDirection * _Time.y;
-            emissionCoordinate = emissionCoordinate + _MainMovementDirection * _Time.y;
-              
-            float runeAlpha = tex2D(_EmissionTex, emissionCoordinate).r;
-            float normalFactor = abs(dot(IN.worldNormal, _IgnoreNormal));
-            
-            float runeSelect = step(tex2D(_NoiseTex, noiseCoordinate).r * runeAlpha, 0.1);
-            float normalSelect = step(normalFactor, 0.6);
-            
-            runeSelect = step(1, runeSelect + normalSelect);
+            xEmissionCoordinate = xEmissionCoordinate + _MainMovementDirection * _Time.y;
+            yEmissionCoordinate = yEmissionCoordinate + _MainMovementDirection * _Time.y;
+            zEmissionCoordinate = zEmissionCoordinate + _MainMovementDirection * _Time.y;
 
-            o.Albedo = lerp(_RuneColor, _Color, runeSelect); 
-            o.Alpha = lerp(runeAlpha, _Color.a, runeSelect);
-            o.Emission = lerp(o.Albedo, _EmissionColor, runeSelect) * o.Alpha;
-           
+            float xRuneAlpha = tex2D(_EmissionTex, xEmissionCoordinate).r;
+            float yRuneAlpha = tex2D(_EmissionTex, yEmissionCoordinate).r;
+            float zRuneAlpha = tex2D(_EmissionTex, zEmissionCoordinate).r;
+             
+            float xNormalFactor = abs(dot(IN.worldNormal, float3(1,0,0)));
+            float yNormalFactor = abs(dot(IN.worldNormal, float3(0,1,0)));
+            float zNormalFactor = abs(dot(IN.worldNormal, float3(0,0,1)));
+
+            float noiseAlpha = tex2D(_NoiseTex, noiseCoordinate).r;
+
+            xRuneAlpha = noiseAlpha * xRuneAlpha;
+            yRuneAlpha = noiseAlpha * yRuneAlpha;
+            zRuneAlpha = noiseAlpha * zRuneAlpha;
+            
+            float xRuneSelect = step(0.08, noiseAlpha * step(0.01, xRuneAlpha));
+            float yRuneSelect = step(0.08, noiseAlpha * step(0.01, yRuneAlpha));
+            float zRuneSelect = step(0.08, noiseAlpha * step(0.01, zRuneAlpha));
+             
+            float xNormalSelect = 1- smoothstep(0.67, 0.8, xNormalFactor);
+            float yNormalSelect = 1- smoothstep(0.67, 0.8, yNormalFactor);
+            float zNormalSelect = 1- smoothstep(0.67, 0.8, zNormalFactor);
+            
+            float xSelect = lerp(xRuneSelect, 0, xNormalSelect);
+            float ySelect = lerp(yRuneSelect, 0, yNormalSelect);
+            float zSelect = lerp(zRuneSelect, 0, zNormalSelect);
+             
+            //o.Albedo = lerp(_RuneColor, 0, saturate(xNormalSelect * yNormalSelect * zNormalSelect));
+            float runeSelect = step(0.001, xSelect)
+                             + step(0.001, ySelect) 
+                             + step(0.001, zSelect);
+
+            float3 color = lerp( _Color, _RuneColor, step(0.001, runeSelect));
+            o.Albedo = color;
+            o.Alpha = max(_Color.a, 
+                        lerp(0, xRuneAlpha, xSelect)
+                      + lerp(0, yRuneAlpha, ySelect)
+                      + lerp(0, zRuneAlpha, zSelect)
+            );
+            o.Emission = color;
             //o.Alpha = alphaPixel.r;
         }
         ENDCG
