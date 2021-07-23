@@ -29,7 +29,7 @@
 
         CGPROGRAM
         // Physically based Standard lighting model, and enable shadows on all light types
-        #pragma surface surf Lambert alpha noshadow 
+        #pragma surface surf Lambert alpha:fade  //noshadow  nometa 
 
         // Use shader model 3.0 target, to get nicer looking lighting
         #pragma target 3.0
@@ -120,7 +120,8 @@
                       + lerp(0, yRuneAlpha, ySelect)
                       + lerp(0, zRuneAlpha, zSelect)
             );
-            o.Emission = color;
+            o.Emission = lerp(_EmissionColor, _RuneColor, step(0.001, runeSelect));
+            UNITY_APPLY_FOG(i.fogCoord, color);
             //o.Alpha = alphaPixel.r;
         }
         ENDCG

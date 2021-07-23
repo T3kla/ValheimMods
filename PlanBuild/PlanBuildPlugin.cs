@@ -50,7 +50,7 @@ namespace PlanBuild
 
             // Init Plans
             AssetBundle planbuildBundle = AssetUtils.LoadAssetBundleFromResources("planbuild", assembly);
-            ShaderHelper.planMaterial = planbuildBundle.LoadAsset<Material>("PlanMaterial");
+            ShaderHelper.planMaterial = planbuildBundle.LoadAsset<Material>("UnlitPlanMaterial");
             planTotemPrefab = new PlanTotemPrefab(planbuildBundle);
             planbuildBundle.Unload(false);
             PlanManager.Instance.Init();
