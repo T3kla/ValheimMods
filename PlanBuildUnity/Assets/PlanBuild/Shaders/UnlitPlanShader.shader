@@ -7,9 +7,11 @@ Shader "Unlit/UnlitPlanShader"
         _RuneColor("Rune Color", Color) = (0,0,0,0)
         _EmissionColor("Emission Color", Color) = (0,0,0,0)
         _MainTex("Albedo (RGB)", 2D) = "black" {}
-        _EmissionTex("Emission (RGB)", 2D) = "black" {}
+        _EmissionTex("Emission (RGB)", 2D) = "white" {}
 
-        _NoiseTex("Noise", 2D) = "white" {}
+        _CellSize("Cell Size", Range(0, 10)) = 1
+
+        _NoiseScale("Scale", float) = (1, 1, 1, 1)
         _MainMovementDirection("Movement Direction Main", float) = (0, -1, 0, 1)
         _NoiseMovementDirection("Movement Direction Noise", float) = (0, 1, 0, 1)
 
@@ -36,7 +38,57 @@ Shader "Unlit/UnlitPlanShader"
             #pragma multi_compile_fog
 
             #include "UnityCG.cginc"
-      
+
+            #include "Random.cginc"
+
+            float _CellSize;
+
+            float easeIn(float interpolator) {
+                return interpolator * interpolator;
+            }
+
+            float easeOut(float interpolator) {
+                return 1 - easeIn(1 - interpolator);
+            }
+
+            float easeInOut(float interpolator) {
+                float easeInValue = easeIn(interpolator);
+                float easeOutValue = easeOut(interpolator);
+                return lerp(easeInValue, easeOutValue, interpolator);
+            }
+
+            float3 _NoiseMovementDirection;
+            float3 _NoiseScale;
+
+            float perlinNoise(float3 value) {
+                float3 fraction = frac(value);
+
+                float interpolatorX = easeInOut(fraction.x);
+                float interpolatorY = easeInOut(fraction.y);
+                float interpolatorZ = easeInOut(fraction.z);
+
+                float cellNoiseZ[2];
+                [unroll]
+                for (int z = 0;z <= 1;z++) {
+                    float cellNoiseY[2];
+                    [unroll]
+                    for (int y = 0;y <= 1;y++) {
+                        float cellNoiseX[2];
+                        [unroll]
+                        for (int x = 0;x <= 1;x++) {
+                            float3 cell = floor(value) + float3(x, y, z);
+                            float3 cellDirection = rand3dTo3d(cell) * 2 - 1;
+                            float3 compareVector = fraction - float3(x, y, z);
+                            cellNoiseX[x] = dot(cellDirection, compareVector);
+                        }
+                        cellNoiseY[y] = lerp(cellNoiseX[0], cellNoiseX[1], interpolatorX);
+                    }
+                    cellNoiseZ[z] = lerp(cellNoiseY[0], cellNoiseY[1], interpolatorY);
+                }
+                float noise = lerp(cellNoiseZ[0], cellNoiseZ[1], interpolatorZ);
+                return noise;
+            }
+
             struct appdata
             { 
                float4 vertex : POSITION; // vertex position
@@ -53,13 +105,10 @@ Shader "Unlit/UnlitPlanShader"
 
 
             half2 _MainMovementDirection;
-            half2 _NoiseMovementDirection;
             half2 _IgnoreNormal;
 
             sampler2D _EmissionTex;
-            float4 _EmissionTex_ST;
-            sampler2D _NoiseTex;
-            float4 _NoiseTex_ST;
+            float4 _EmissionTex_ST; 
 
             fixed4 _Color;
             fixed4 _RuneColor;
@@ -74,9 +123,24 @@ Shader "Unlit/UnlitPlanShader"
                 UNITY_TRANSFER_FOG(o,o.vertex);
                 return o;
             }
-
+             
             fixed4 frag(v2f v) : SV_Target
-            { 
+            {  
+                float3 value = v.worldPos * _NoiseScale;
+                //get noise and adjust it to be ~0-1 range
+                float noise = perlinNoise(value  + _NoiseMovementDirection * _Time.y) + 0.5;
+              
+                noise = frac(noise * 6);
+                noise = pow(noise, 10) / 2;
+
+
+              // float pixelNoiseChange = fwidth(noise);
+              //
+              // float heightLine = smoothstep(1 - pixelNoiseChange, 1, noise);
+              // heightLine += smoothstep(pixelNoiseChange, 0, noise);
+              //
+              // noise = heightLine;
+
                 float2 textureCoordinateX = v.worldPos.zy;
                 float2 textureCoordinateY = v.worldPos.xz;
                 float2 textureCoordinateZ = v.worldPos.xy;
@@ -84,10 +148,7 @@ Shader "Unlit/UnlitPlanShader"
                 float2 xEmissionCoordinate = TRANSFORM_TEX(textureCoordinateX, _EmissionTex);
                 float2 yEmissionCoordinate = TRANSFORM_TEX(textureCoordinateY, _EmissionTex);
                 float2 zEmissionCoordinate = TRANSFORM_TEX(textureCoordinateZ, _EmissionTex);
-
-
-               
-               
+                 
                 xEmissionCoordinate = xEmissionCoordinate + _MainMovementDirection * _Time.y;
                 yEmissionCoordinate = yEmissionCoordinate + _MainMovementDirection * _Time.y;
                 zEmissionCoordinate = zEmissionCoordinate + _MainMovementDirection * _Time.y;
@@ -99,26 +160,14 @@ Shader "Unlit/UnlitPlanShader"
                 float xNormalFactor = abs(dot(v.normal, float3(1, 0, 0)));
                 float yNormalFactor = abs(dot(v.normal, float3(0, 1, 0)));
                 float zNormalFactor = abs(dot(v.normal, float3(0, 0, 1)));
+                 
+                xRuneAlpha = noise * xRuneAlpha;
+                yRuneAlpha = noise * yRuneAlpha;
+                zRuneAlpha = noise * zRuneAlpha;
 
-                float2 xNoiseCoordinate = TRANSFORM_TEX(textureCoordinateX, _NoiseTex);
-                float2 yNoiseCoordinate = TRANSFORM_TEX(textureCoordinateY, _NoiseTex);
-                float2 zNoiseCoordinate = TRANSFORM_TEX(textureCoordinateZ, _NoiseTex);
-
-                xNoiseCoordinate = xNoiseCoordinate + _NoiseMovementDirection * _Time.y;
-                yNoiseCoordinate = yNoiseCoordinate + _NoiseMovementDirection * _Time.y;
-                zNoiseCoordinate = zNoiseCoordinate + _NoiseMovementDirection * _Time.y;
-
-                float xNoiseAlpha = tex2D(_NoiseTex, xNoiseCoordinate).r;
-                float yNoiseAlpha = tex2D(_NoiseTex, yNoiseCoordinate).r;
-                float zNoiseAlpha = tex2D(_NoiseTex, zNoiseCoordinate).r;
-
-                xRuneAlpha = xNoiseAlpha * xRuneAlpha;
-                yRuneAlpha = yNoiseAlpha * yRuneAlpha;
-                zRuneAlpha = zNoiseAlpha * zRuneAlpha;
-
-                float xRuneSelect = step(0.08, xNoiseAlpha * step(0.01, xRuneAlpha));
-                float yRuneSelect = step(0.08, yNoiseAlpha * step(0.01, yRuneAlpha));
-                float zRuneSelect = step(0.08, zNoiseAlpha * step(0.01, zRuneAlpha));
+                float xRuneSelect = step(0.08, noise * step(0.01, xRuneAlpha));
+                float yRuneSelect = step(0.08, noise * step(0.01, yRuneAlpha));
+                float zRuneSelect = step(0.08, noise * step(0.01, zRuneAlpha));
 
                 float xNormalSelect = smoothstep(0.67, 0.8, xNormalFactor);
                 float yNormalSelect = smoothstep(0.67, 0.8, yNormalFactor);
@@ -129,9 +178,9 @@ Shader "Unlit/UnlitPlanShader"
                 float zSelect = lerp(0, zRuneSelect, zNormalSelect);
 
                 //o.Albedo = lerp(_RuneColor, 0, saturate(xNormalSelect * yNormalSelect * zNormalSelect));
-                float runeSelect = step(0.1, xSelect)
-                    + step(0.1, ySelect)
-                    + step(0.1, zSelect);
+                float runeSelect = step(0.01, xSelect)
+                    + step(0.01, ySelect)
+                    + step(0.01, zSelect);
 
                 float4 color = lerp(_EmissionColor, _RuneColor, runeSelect); 
                 color.a = max(_EmissionColor.a * _EmissionColor.a,
