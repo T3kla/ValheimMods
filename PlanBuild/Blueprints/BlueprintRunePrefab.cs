@@ -2,6 +2,7 @@
 using Jotunn.Entities;
 using Jotunn.Managers;
 using UnityEngine;
+using System.Collections.Generic;
 
 namespace PlanBuild.Blueprints
 {
@@ -37,37 +38,28 @@ namespace PlanBuild.Blueprints
             });
             PieceManager.Instance.AddPieceTable(table);
 
-            // Rune item
-            GameObject runeprefab = assetBundle.LoadAsset<GameObject>(BlueprintRuneName);
-            CustomItem item = new CustomItem(runeprefab, false, new ItemConfig
+            // Asset Bundle prefabs
+            GameObject[] prefabArray = assetBundle.LoadAllAssets<GameObject>();
+            Dictionary<string, GameObject> prefabs = new Dictionary<string, GameObject>(prefabArray.Length);
+            for (int i = 0; i < prefabArray.Length; i++)
+            {
+                prefabs.Add(prefabArray[i].name, prefabArray[i]);
+            }
+
+            // Stub piece
+            PrefabManager.Instance.AddPrefab(prefabs[Blueprint.PieceBlueprintName]);
+                
+            // Blueprint rune
+            CustomItem item = new CustomItem(prefabs[BlueprintRuneName], false, new ItemConfig
             {
                 Amount = 1,
                 Requirements = new RequirementConfig[]
-                {
-                    new RequirementConfig {Item = "Stone", Amount = 1}
-                }
+            {
+            new RequirementConfig {Item = "Stone", Amount = 1}
+            }
             });
             ItemManager.Instance.AddItem(item);
             BlueprintRuneItemName = item.ItemDrop.m_itemData.m_shared.m_name;
-
-            // Tool pieces
-            CustomPiece piece;
-            GameObject prefab;
-            foreach (string pieceName in new string[]
-            {
-                BlueprintCaptureName, BlueprintSnapPointName, BlueprintCenterPointName,
-                BlueprintDeleteName, BlueprintTerrainName
-            })
-            {
-                prefab = assetBundle.LoadAsset<GameObject>(pieceName);
-                piece = new CustomPiece(prefab, new PieceConfig
-                {
-                    PieceTable = PieceTableName,
-                    Category = CategoryTools
-                });
-                piece.PiecePrefab.AddComponent<ToolPiece>();
-                PieceManager.Instance.AddPiece(piece);
-            }
 
             // World runes
             foreach (string pieceName in new string[]
@@ -75,8 +67,7 @@ namespace PlanBuild.Blueprints
                 StandingBlueprintRuneName, BlueprintRuneStackName
             })
             {
-                prefab = assetBundle.LoadAsset<GameObject>(pieceName);
-                piece = new CustomPiece(prefab, new PieceConfig
+                CustomPiece piece = new CustomPiece(prefabs[pieceName], new PieceConfig
                 {
                     PieceTable = "Hammer",
                     Requirements = new RequirementConfig[] {
@@ -93,9 +84,21 @@ namespace PlanBuild.Blueprints
                 PieceManager.Instance.AddPiece(piece);
             }
 
-            // Blueprint stub
-            GameObject placebp_prefab = assetBundle.LoadAsset<GameObject>(Blueprint.PieceBlueprintName);
-            PrefabManager.Instance.AddPrefab(placebp_prefab);
+            // Tool pieces
+            foreach (string pieceName in new string[]
+            {
+                BlueprintCaptureName, BlueprintSnapPointName, BlueprintCenterPointName,
+                BlueprintDeleteName, BlueprintTerrainName
+            })
+            {
+                CustomPiece piece = new CustomPiece(prefabs[pieceName], new PieceConfig
+                {
+                    PieceTable = PieceTableName,
+                    Category = CategoryTools
+                });
+                piece.PiecePrefab.AddComponent<ToolPiece>();
+                PieceManager.Instance.AddPiece(piece);
+            }
         }
     }
 }
