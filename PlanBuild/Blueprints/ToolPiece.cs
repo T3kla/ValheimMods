@@ -12,23 +12,31 @@ namespace PlanBuild.Blueprints
         private void Awake()
         {
             Jotunn.Logger.LogMessage($"{gameObject} awoken");
-            //On.Player.UpdatePlacementGhost += OnUpdatePlacementGhost;
+            On.Player.UpdatePlacementGhost += OnUpdatePlacementGhost;
         }
 
         private void OnDestroy()
         {
             Jotunn.Logger.LogMessage($"{gameObject} destroyed");
-            //On.Player.UpdatePlacementGhost -= OnUpdatePlacementGhost;
+            On.Player.UpdatePlacementGhost -= OnUpdatePlacementGhost;
         }
 
+        /// <summary>
+        ///     Flatten the circle selector transform
+        /// </summary>
         private void OnUpdatePlacementGhost(On.Player.orig_UpdatePlacementGhost orig, Player self, bool flashGuardStone)
         {
-            UpdatePlacementGhost(self);
+            orig(self, flashGuardStone);
+
+            if (self.m_placementMarkerInstance && self.m_placementGhost &&
+                (name.Equals(BlueprintRunePrefab.BlueprintCaptureName) ||
+                 name.Equals(BlueprintRunePrefab.BlueprintDeleteName) ||
+                 name.Equals(BlueprintRunePrefab.BlueprintTerrainName))
+               )
+            {
+                self.m_placementMarkerInstance.transform.up = Vector3.back;
+            }
         }
 
-        internal virtual void UpdatePlacementGhost(Player self)
-        {
-
-        }
     }
 }

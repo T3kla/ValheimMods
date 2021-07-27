@@ -82,7 +82,6 @@ namespace PlanBuild.Blueprints
                 On.Player.UpdateWearNTearHover += OnUpdateWearNTearHover;
                 On.Player.SetupPlacementGhost += OnSetupPlacementGhost;
                 On.Player.UpdatePlacement += OnUpdatePlacement;
-                On.Player.UpdatePlacementGhost += OnUpdatePlacementGhost;
                 On.Player.PlacePiece += OnPlacePiece;
                 On.GameCamera.UpdateCamera += OnUpdateCamera;
                 On.Humanoid.EquipItem += OnEquipItem;
@@ -735,26 +734,6 @@ namespace PlanBuild.Blueprints
                 SelectionCircle.Update();
 
                 Jotunn.Logger.LogDebug($"Setting radius to {Instance.SelectionRadius}");
-            }
-        }
-
-        /// <summary>
-        ///     Flatten the circle selector transform
-        /// </summary>
-        /// <param name="orig"></param>
-        /// <param name="self"></param>
-        /// <param name="flashGuardStone"></param>
-        private void OnUpdatePlacementGhost(On.Player.orig_UpdatePlacementGhost orig, Player self, bool flashGuardStone)
-        {
-            orig(self, flashGuardStone);
-
-            if (self.m_placementMarkerInstance && self.m_placementGhost &&
-                (self.m_placementGhost.name.Equals(BlueprintRunePrefab.BlueprintCaptureName)
-                || self.m_placementGhost.name.Equals(BlueprintRunePrefab.BlueprintDeleteName)
-                || self.m_placementGhost.name.Equals(BlueprintRunePrefab.BlueprintTerrainName))
-               )
-            {
-                self.m_placementMarkerInstance.transform.up = Vector3.back;
             }
         }
 
