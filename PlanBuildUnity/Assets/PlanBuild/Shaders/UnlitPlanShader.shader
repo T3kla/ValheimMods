@@ -89,6 +89,34 @@ Shader "Unlit/UnlitPlanShader"
                 return noise;
             }
 
+
+            float perlinNoise2d(float2 value) {
+                //generate random directions
+                float2 lowerLeftDirection = rand2dTo2d(float2(floor(value.x), floor(value.y))) * 2 - 1;
+                float2 lowerRightDirection = rand2dTo2d(float2(ceil(value.x), floor(value.y))) * 2 - 1;
+                float2 upperLeftDirection = rand2dTo2d(float2(floor(value.x), ceil(value.y))) * 2 - 1;
+                float2 upperRightDirection = rand2dTo2d(float2(ceil(value.x), ceil(value.y))) * 2 - 1;
+
+                float2 fraction = frac(value);
+
+                //get values of cells based on fraction and cell directions
+                float lowerLeftFunctionValue = dot(lowerLeftDirection, fraction - float2(0, 0));
+                float lowerRightFunctionValue = dot(lowerRightDirection, fraction - float2(1, 0));
+                float upperLeftFunctionValue = dot(upperLeftDirection, fraction - float2(0, 1));
+                float upperRightFunctionValue = dot(upperRightDirection, fraction - float2(1, 1));
+
+                float interpolatorX = easeInOut(fraction.x);
+                float interpolatorY = easeInOut(fraction.y);
+
+                //interpolate between values
+                float lowerCells = lerp(lowerLeftFunctionValue, lowerRightFunctionValue, interpolatorX);
+                float upperCells = lerp(upperLeftFunctionValue, upperRightFunctionValue, interpolatorX);
+
+                float noise = lerp(lowerCells, upperCells, interpolatorY);
+                return noise;
+            }
+
+
             struct appdata
             { 
                float4 vertex : POSITION; // vertex position
@@ -129,10 +157,15 @@ Shader "Unlit/UnlitPlanShader"
                 float3 value = v.worldPos * _NoiseScale;
                 //get noise and adjust it to be ~0-1 range
                 float noise = perlinNoise(value  + _NoiseMovementDirection * _Time.y) + 0.5;
-              
-                noise = frac(noise * 6);
-                noise = pow(noise, 10) / 2;
 
+                float yOffset = value.y + _NoiseMovementDirection.y * _Time.y;
+                float section = floor(yOffset);
+
+              //  float noise = perlinNoise2d(v.worldPos.xz ) + value.y + _NoiseMovementDirection.y * _Time.y;
+
+                noise = frac(noise * 6);
+                noise = pow(noise, 3) / 2;
+               // noise = 1;
 
               // float pixelNoiseChange = fwidth(noise);
               //
@@ -169,9 +202,9 @@ Shader "Unlit/UnlitPlanShader"
                 float yRuneSelect = step(0.08, noise * step(0.01, yRuneAlpha));
                 float zRuneSelect = step(0.08, noise * step(0.01, zRuneAlpha));
 
-                float xNormalSelect = smoothstep(0.67, 0.8, xNormalFactor);
-                float yNormalSelect = smoothstep(0.67, 0.8, yNormalFactor);
-                float zNormalSelect = smoothstep(0.67, 0.8, zNormalFactor);
+                float xNormalSelect = smoothstep(0.7, 0.8, xNormalFactor);
+                float yNormalSelect = smoothstep(0.7, 0.8, yNormalFactor);
+                float zNormalSelect = smoothstep(0.7, 0.8, zNormalFactor);
 
                 float xSelect = lerp(0, xRuneSelect, xNormalSelect);
                 float ySelect = lerp(0, yRuneSelect, yNormalSelect);
@@ -188,7 +221,7 @@ Shader "Unlit/UnlitPlanShader"
                     + lerp(0, yRuneAlpha, ySelect)
                     + lerp(0, zRuneAlpha, zSelect)
                 );
-        
+            
                 return color;
             }
             ENDCG
