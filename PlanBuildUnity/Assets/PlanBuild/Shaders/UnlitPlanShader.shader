@@ -8,7 +8,7 @@
 		_MainTex("Albedo (RGB)", 2D) = "black" {}
 		_EmissionTex("Emission (RGB)", 2D) = "white" {}
 
-		_CellSize("Cell Size", Range(0, 10)) = 1
+		_NoisePower("Noise Power", Range(0, 1)) = 1
 
 		_MainMovementDirection("Movement Direction Runes", float) = (0, -1, 0, 1)
 
@@ -45,7 +45,7 @@
 
 				#include "Random.cginc"
 
-				float _CellSize;
+				float _NoisePower;
 
 				float easeIn(float interpolator) {
 					return interpolator * interpolator;
@@ -163,14 +163,12 @@
 					float fogNoise = perlinNoise(v.worldPos* _FogNoiseScale + _FogMovementDirection * _Time.y) + 0.5;
 				 	//fogNoise = smoothstep(0.1, 1, fogNoise);
 					fogNoise = pow(fogNoise, 4);
-
-					float yOffset = value.y + _NoiseMovementDirection.y * _Time.y;
-					float section = floor(yOffset);
-
-					float noise = perlinNoise2d(value.xz) + value.y;
+					  
+					float noise = _NoisePower * perlinNoise2d(value.xz) + value.y;
 
 					noise = frac(noise * 6);
-					noise = pow(noise, 5) / 2;
+					noise = smoothstep(0.5, 0.95, noise);
+					noise = pow(noise, 10);
 
 					noise = min(noise, fogNoise);
 					// noise = 1;
