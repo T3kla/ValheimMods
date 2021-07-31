@@ -8,7 +8,7 @@ Material:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: PlanShaderTestMat 1
-  m_Shader: {fileID: 4800000, guid: 8632c90f0146dd24391c4cf52d3358e0, type: 3}
+  m_Shader: {fileID: 4800000, guid: 59a023cbbe9cb6c4993a516b44ebcb74, type: 3}
   m_ShaderKeywords: _EMISSION _NORMALMAP
   m_LightmapFlags: 2
   m_EnableInstancingVariants: 0
@@ -59,6 +59,7 @@ Material:
     - _Amount: 0
     - _Amplitude: 1
     - _BumpScale: 1
+    - _CellSize: 1
     - _ColorFalloff: 23.1
     - _Cutoff: 0.5
     - _CutoutThresh: 0.088

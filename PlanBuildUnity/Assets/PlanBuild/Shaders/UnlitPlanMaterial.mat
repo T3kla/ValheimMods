@@ -85,7 +85,10 @@ Material:
     m_Colors:
     - _Color: {r: 1, g: 1, b: 1, a: 0}
     - _EmissionColor: {r: 1, g: 1, b: 1, a: 0.101960786}
+    - _FogMovementDirection: {r: 0.5, g: 0, b: 0.5, a: 1}
+    - _FogNoiseScale: {r: 1, g: 1, b: 1, a: 1}
     - _IgnoreNormal: {r: 0, g: 1, b: 0, a: 1}
     - _MainMovementDirection: {r: 0, g: -0.15, b: 0, a: 1}
-    - _NoiseMovementDirection: {r: 0, g: -0.1, b: 0, a: 1}
+    - _NoiseMovementDirection: {r: 0.005, g: -0.008, b: 0.005, a: 1}
+    - _NoiseScale: {r: 0.01, g: 0.01, b: 0.01, a: 1}
     - _RuneColor: {r: 1, g: 0, b: 0, a: 1}
